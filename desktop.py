@@ -17,6 +17,7 @@ from zf_ai_bridge.protocol import ProtocolParser
 from zf_ai_bridge.tap import TapForwarder
 from zf_ai_bridge.desktop_runtime import PRODUCT_NAME, VERSION, data_directory
 from zf_ai_bridge.motion import MotionButton
+from zf_ai_bridge.ipm_view import AdvancedPerspectiveWindow
 
 PALETTES = {
     "light": dict(bg="#f9f9f9", side="#f0f0f0", card="#ffffff", text="#202020",
@@ -144,7 +145,7 @@ class LingXiApp(bridge_ui.BridgeApp):
         for text, command in (("−", lambda: self._zoom_by(-1)), ("＋", lambda: self._zoom_by(1)),
                               ("适应", self._fit_view), ("1:1", lambda: self._zoom_by(0, absolute=1))):
             self._button(toolbar, text, command, side="left", padx=(0, 5))
-        self._button(toolbar, "逆透视", self._open_perspective, side="left", padx=3)
+        self._button(toolbar, "高级标定", self._open_advanced_perspective, side="left", padx=3)
         self.zoom_var = tk.StringVar(value="滚轮缩放 · 右键移动")
         ttk.Label(toolbar, textvariable=self.zoom_var, style="CardMuted.TLabel").pack(side="right")
         self.probe_var = tk.StringVar(value="点击原图查看像素值")
@@ -171,6 +172,7 @@ class LingXiApp(bridge_ui.BridgeApp):
                         command=self._toggle_motion, style="Card.TCheckbutton").pack(anchor="w", pady=(12, 0))
         actions = self._card(capture, "采集与标定")
         self._button(actions, "四点逆透视", self._open_perspective, primary=True)
+        self._button(actions, "高级逆透视标定", self._open_advanced_perspective)
         row = ttk.Frame(actions, style="Card.TFrame")
         row.pack(fill="x", pady=3)
         self._button(row, "导入图片", self._upload_image, side="left", expand=True, fill="x", padx=(0, 4))
@@ -220,6 +222,7 @@ class LingXiApp(bridge_ui.BridgeApp):
         ttk.Label(card, text="使用实时原图，或导入一张图片。所有分析入口共用当前工作图。",
                   style="CardMuted.TLabel", wraplength=660).pack(anchor="w", pady=(8, 24))
         for title, description, command in (
+            ("高级逆透视", "多组实测拟合、滑条与精确输入、实时鸟瞰、矩阵与C查表导出。", self._open_advanced_perspective),
             ("四点逆透视", "冻结干净原图，选择地面矩形四角，保存实测标定。", self._open_perspective),
             ("像素矩阵", "查看灰度数值与阈值，检查二值化结果。", self._open_matrix),
             ("导入图片", "支持 PNG、JPEG、BMP 等常见格式。", self._upload_image),
@@ -292,6 +295,34 @@ class LingXiApp(bridge_ui.BridgeApp):
         self._refresh_motion_buttons()
         self._save_desktop_preferences()
 
+    def _ipm_current_frame(self):
+        frame = self.frame_sink.last_frame if self.mode == 'live' else None
+        if frame:
+            return frame[:4]
+        snapshot = getattr(self, '_display_raw', None)
+        if snapshot:
+            w, h, rgb = snapshot
+            return (0, w, h, rgb)
+        return None
+
+    def _open_advanced_perspective(self):
+        existing = getattr(self, '_ipm_window', None)
+        if existing and not existing._closed:
+            existing.win.lift()
+            return
+        frame = self._ipm_current_frame()
+        if not frame:
+            messagebox.showinfo('高级逆透视', '请先接收图传，或导入一张188×120干净原图。', parent=self.root)
+            return
+        try:
+            kind, w, h, rgb = frame
+            window = AdvancedPerspectiveWindow(self.root, rgb, w, h, kind, self.data_dir/'frames',
+                frame_provider=lambda: self.frame_sink.last_frame[:4] if self.frame_sink.last_frame else None,
+                palette=PALETTES[self.theme], capture_provider=self._ipm_current_frame)
+            self._ipm_window = window
+        except (OSError, ValueError) as exc:
+            messagebox.showerror('无法打开高级标定', str(exc), parent=self.root)
+
     def _apply_theme(self):
         c = PALETTES[self.theme]
         self.root.configure(bg=c["bg"])
@@ -337,6 +368,9 @@ class LingXiApp(bridge_ui.BridgeApp):
         if self._photo is None:
             self._preview_message("等待图像\n\n连接设备，或导入一张图片")
         self._refresh_motion_buttons()
+        ipm = getattr(self, '_ipm_window', None)
+        if ipm and not ipm._closed:
+            ipm.apply_palette(c)
 
     def toggle_theme(self):
         self.theme = "dark" if self.theme == "light" else "light"

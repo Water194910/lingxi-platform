@@ -8,13 +8,14 @@
 
 Windows 10/11 x64 用户请到 **[Releases 下载](https://github.com/Water194910/lingxi-platform/releases)**，选择 `LingXi-版本-windows-x64.zip`。解压整个包，双击 `LingXi/LingXi.exe`，无需安装 Python；保留相邻的 `_internal`，不要在 ZIP 中直接运行。
 
-当前版本：`0.2.0-preview.5`。发布包**未签名**，可能显示 SmartScreen“Windows已保护你的电脑”；签名申请尚未完成。下载页提供匹配源码 ZIP 和 `SHA256SUMS.txt`。若决定运行，请先核对来源及哈希，无需关闭系统防护。
+当前源码版本：`0.2.0-preview.6`，公开下载版本以Releases为准。应用**未签名**，可能显示 SmartScreen“Windows已保护你的电脑”；签名申请尚未完成。下载页提供匹配源码 ZIP 和 `SHA256SUMS.txt`。若决定运行，请先核对来源及哈希，无需关闭系统防护。
 
 ## 功能
 
 - **视觉工作台**：WiFi TCP/串口接收，灰度、二值、RGB565；边线/路径独立预览，原始图像保持干净。
 - **历史图像**：单击预览、双击锁定、顶部“回到实时”；支持单张、多选和全部保存，不降分辨率。
 - **图像分析**：像素探针、像素矩阵、四点逆透视；PNG/JPEG/BMP导入、原始AVI录像。
+- **高级逆透视标定**：滑条与精确数值联动、角点拖动、多组实测拟合、误差检查、实时鸟瞰、有效掩码及图像/边线点C查表导出。
 - **设备与事件**：通道数据、可选官方助手旁路、供AI客户端使用的本机接口。
 - **显示**：浅色/深色、按钮渐变与回弹、页面滑入；“显示 → 界面动效”可关闭动画。
 
@@ -57,6 +58,8 @@ $env:LINGXI_DATA_DIR = "$PWD\userdata"
 
 这是地面平面变换，不自动校正镜头畸变，不代替巡线/补线；相机位置或图像尺寸改变需重标。详见 [标定说明](docs/逆透视标定使用说明.md)。
 
+“图像分析 → 高级逆透视”适用于188×120原图。实测宽/长/距离单位统一为毫米，支持三组冻结样本；常调视图参数用滑条粗调、数值框精调。导出包含原始样本、鸟瞰图、有效掩码及两张C查表，不直接覆盖车辆工程。详见[高级标定操作](docs/高级逆透视标定.md)。
+
 ## 源码运行
 
 Windows Python 3.12 x64（含Tcl/Tk），运行依赖Pillow/pyserial；可直接安装固定构建依赖：
@@ -86,6 +89,7 @@ python -m venv .venv
 ```powershell
 .\.venv\Scripts\python.exe tests/test_p0.py
 .\.venv\Scripts\python.exe tests/test_raw_perspective.py
+.\.venv\Scripts\python.exe tests/test_ipm.py
 .\.venv\Scripts\python.exe desktop.py --self-test-report test-results/source.json
 .\build_windows.ps1 -PythonPath .\.venv\Scripts\python.exe
 .\dist\LingXi\LingXi.exe --self-test-report test-results/frozen.json

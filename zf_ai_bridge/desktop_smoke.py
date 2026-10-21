@@ -243,6 +243,8 @@ def run(report_path: Path) -> int:
             assert (exported/"calibration.json").is_file()
             win.win.destroy()
             report["checks"].append("four-point-warp-export")
+            from .ipm_smoke import exercise
+            report['checks'].append(exercise(root, ui, Path(folder)))
             photo = Path(folder)/"test.jpg"
             Image.new("RGB", (16, 12), (25, 25, 25)).save(photo)
             with patch.object(filedialog, "askopenfilename", return_value=str(photo)):

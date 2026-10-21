@@ -9,3 +9,5 @@
 Windows便携包包含Python、Tcl/Tk、Pillow、pyserial及PyInstaller生成的运行组件。依赖版本见 `requirements-build.txt`，运行时收集的许可保留；Python、Pillow、pyserial及构建依赖的许可证另放在 `ThirdPartyLicenses/`。PyInstaller引导程序采用其许可和相应例外。
 
 签名服务尚未开通，不声称由SignPath Foundation背书或提供签名。
+
+高级逆透视的功能需求参考用户提供的离线IPM工具（多距离角点、矩阵、查表导出工作流）。新增 `ipm.py`、`ipm_view.py` 在灵犀中以标准库/Tk重新实现，不包含该工具的源码、预设、Qt界面或打包产物；支持其JSON字段格式互操作。平面单应变换与最小二乘为通用数学方法，未主张其所有权。

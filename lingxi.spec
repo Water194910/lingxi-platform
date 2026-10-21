@@ -7,7 +7,7 @@ a = Analysis(
     pathex=[str(root)],
     binaries=[],
     datas=[(str(root / 'LICENSE'), '.'), (str(root / 'assets' / 'lingxi.ico'), 'assets')],
-    hiddenimports=['serial', 'PIL.Image', 'zf_ai_bridge.desktop_smoke'],
+    hiddenimports=['serial', 'PIL.Image', 'PIL.ImageTk', 'zf_ai_bridge.desktop_smoke', 'zf_ai_bridge.ipm_smoke'],
     hookspath=[], hooksconfig={}, runtime_hooks=[], excludes=[], noarchive=False,
 )
 pyz = PYZ(a.pure)
