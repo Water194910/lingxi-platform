@@ -43,7 +43,7 @@ def run(report_path: Path) -> int:
             blocked = Path(folder)/"not-a-directory"
             blocked.write_text("file", encoding="utf-8")
             fallback = Path(folder)/"fallback"
-            assert choose_writable_directory([blocked, fallback]) == fallback
+            assert choose_writable_directory([blocked, fallback]) == fallback.resolve()
             assert not list(fallback.glob(".lingxi-write-*"))
             with patch.object(Path, "mkdir", side_effect=PermissionError("simulated denied")):
                 try:

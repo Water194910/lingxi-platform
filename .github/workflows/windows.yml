@@ -34,7 +34,12 @@ jobs:
           python client.py self-test
           exit $LASTEXITCODE
       - name: Source desktop self-test
-        run: python desktop.py --self-test-report test-results/source.json
+        shell: pwsh
+        run: |
+          python desktop.py --self-test-report test-results/source.json
+          $result = $LASTEXITCODE
+          Get-Content test-results/source.json
+          exit $result
       - name: Build portable application
         shell: pwsh
         run: ./build_windows.ps1 -PythonPath python
