@@ -1,0 +1,130 @@
+{
+  "parent_commit": "unknown",
+  "note": "Original imported bytes before standalone path, documentation, version and build changes. Current repository history identifies maintained source.",
+  "files": [
+    {
+      "path": "app.py",
+      "sha256": "a363c7a0520f7365e4e4956638a29a697047949f75e063d353a72cf57fa1846d"
+    },
+    {
+      "path": "desktop.py",
+      "sha256": "83baf96bd3f2c95de83cde13207f602f06cffc04fcfc77908fd5744fb7fba14d"
+    },
+    {
+      "path": "client.py",
+      "sha256": "0baf23fb85323420ac4c5dd40c364d8500e8cb1f317e9279a9129e9cafc7a9bb"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+    },
+    {
+      "path": "bounds.example.json",
+      "sha256": "cfe61bc6ab675fcd0a8afd9e63711e81ef7bd109d81d2b162b7cf59f778fc945"
+    },
+    {
+      "path": "Start-LingXi.bat",
+      "sha256": "753489c9e7802b02aafea7e1ad9d05070e5f86ab04ff1ea5234823cc3cd4cc73"
+    },
+    {
+      "path": "build_windows.ps1",
+      "sha256": "edf94a02b5cfeb3ec4c0b055664d8a13d357fe0163ad9eee791cc4fdad4bd57a"
+    },
+    {
+      "path": "sign_windows.ps1",
+      "sha256": "d060657ade6d51b3920fd781e4375e8536f75a16a9ae382fd7107938a5a308e1"
+    },
+    {
+      "path": "requirements-build.txt",
+      "sha256": "885c67704f4130c7a882f2e02cc4fba99f376c0a8fb0250b7835b40fb2b610ef"
+    },
+    {
+      "path": "lingxi.spec",
+      "sha256": "9eceed1c6bdee682d63555ad16f829b159695cb9b13d86a0bd53f81e1157f7ee"
+    },
+    {
+      "path": "windows_version.txt",
+      "sha256": "7ae8082687d7c198968e7cb858ae8bee798965f4224704a585f2e80e59116af3"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "2800f71b3b05d256f14867b9fdf84e38b5f792f2274dd2a069fa6ee3cdbc29ed"
+    },
+    {
+      "path": "make_icon.py",
+      "sha256": "cb62697a09afc72032b5993fd19f0c7dfd089ea23fbab987182440856f2528f0"
+    },
+    {
+      "path": "zf_ai_bridge/__init__.py",
+      "sha256": "108da79e54137df7b2fd8c3a5b718fff92eb1e60516464ffea0521c13cd578a5"
+    },
+    {
+      "path": "zf_ai_bridge/__main__.py",
+      "sha256": "12b700cb816a1364d948c9791afc22db8e0241fb9683b36f570fe6c8b3bfccb8"
+    },
+    {
+      "path": "zf_ai_bridge/bridge.py",
+      "sha256": "356504b23103f79d77237671da553940d4bf9ad2b64063e6259af78cb8b24290"
+    },
+    {
+      "path": "zf_ai_bridge/desktop_runtime.py",
+      "sha256": "051125a3cd95c9383963b46705640241ceb44b34aba68c3844bd1c6b89acab10"
+    },
+    {
+      "path": "zf_ai_bridge/desktop_smoke.py",
+      "sha256": "1722dd735fee303bf4353ea6a9cf62b5cbdfebfb75ebb59215e0236cab5bbc81"
+    },
+    {
+      "path": "zf_ai_bridge/extras.py",
+      "sha256": "20cf7541e2e5ccf68f02a265114ffe8c1aeeca92d9b574a045476a5189a83f01"
+    },
+    {
+      "path": "zf_ai_bridge/image.py",
+      "sha256": "b069d9767f3ab267d01cb039e20057d31051d21e66c2620ec080aa769e397f81"
+    },
+    {
+      "path": "zf_ai_bridge/inputs.py",
+      "sha256": "9d49fc702e9430a293ffb8670e5dbaba55f0caf8dd186a838bb134ed26475bd1"
+    },
+    {
+      "path": "zf_ai_bridge/matrix_view.py",
+      "sha256": "423de5f99c8aa00c148236d7560bd04896f90220bc15f86be3cf6f101860699d"
+    },
+    {
+      "path": "zf_ai_bridge/motion.py",
+      "sha256": "ac2487b644fcfb370b6a2b61e4254156f6ce287a1845e3d5296a9f20ca77d8e1"
+    },
+    {
+      "path": "zf_ai_bridge/perspective.py",
+      "sha256": "da51dd70081356009a1e1d92fde33203624a499e0d32ccdb372573f231f73a11"
+    },
+    {
+      "path": "zf_ai_bridge/perspective_view.py",
+      "sha256": "a4f669acd79aeb368d2fac2e332614c711586f07bf550f6d41064bb6d6b533a6"
+    },
+    {
+      "path": "zf_ai_bridge/protocol.py",
+      "sha256": "118c6cf8343bd4dbcdb17daa0d06d262b2e988887864ba0a7ab672a1c3c0ed50"
+    },
+    {
+      "path": "zf_ai_bridge/recorder.py",
+      "sha256": "8cadee2ae64b50cbcffd76fad11852d20d2defe143ec9303537b02031ff722b9"
+    },
+    {
+      "path": "zf_ai_bridge/tap.py",
+      "sha256": "d96d81a7104ddc4a13eeba0324df0e1a3931287639db68e8ca24462afb86a005"
+    },
+    {
+      "path": "tests/test_p0.py",
+      "sha256": "bbdf0ff9d14f46becf69cfb74476bd0b468407d3b8334817ea33e1a1532bec4c"
+    },
+    {
+      "path": "tests/test_raw_perspective.py",
+      "sha256": "775be366f20bb5490b6065d1cbebe9b820e96cc71258e6167f1b095ffd4e38d2"
+    },
+    {
+      "path": "assets/lingxi.svg",
+      "sha256": "4de7fca29ce60358f17ce3a5fb7e41bb132f79c6a31a4cce1d1c506ecc5bf31b"
+    }
+  ]
+}

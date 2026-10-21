@@ -1,0 +1,61 @@
+name: Windows build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+          cache-dependency-path: requirements-build.txt
+      - name: Install build dependencies
+        run: python -m pip install -r requirements-build.txt
+      - name: Core tests
+        shell: pwsh
+        run: |
+          python tests/test_p0.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/test_raw_perspective.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python client.py self-test
+          exit $LASTEXITCODE
+      - name: Source desktop self-test
+        run: python desktop.py --self-test-report test-results/source.json
+      - name: Build portable application
+        shell: pwsh
+        run: ./build_windows.ps1 -PythonPath python
+      - name: Frozen EXE self-test
+        shell: pwsh
+        run: |
+          $test = Start-Process -FilePath "$PWD/dist/LingXi/LingXi.exe" -ArgumentList @('--self-test-report', "$PWD/test-results/frozen.json") -Wait -PassThru
+          Get-Content test-results/frozen.json
+          if ($test.ExitCode -ne 0) { exit $test.ExitCode }
+          if (-not (Get-Content test-results/frozen.json -Raw | ConvertFrom-Json).ok) { throw 'Frozen self-test failed' }
+      - name: Package matching source, portable EXE and licenses
+        run: python tools/package_windows.py --binary dist/LingXi --report test-results/frozen.json --output release
+      - name: Upload download packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: LingXi-windows-x64
+          path: release/*
+          if-no-files-found: error
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: LingXi-test-reports
+          path: test-results/*.json

@@ -1,0 +1,21 @@
+# Runtime data and local settings
+userdata/
+frames/
+settings.json
+desktop.json
+perspective.local.json
+*.avi
+*.log
+*.pyc
+*.bak-*
+__pycache__/
+.venv/
+build/
+dist/
+release/
+test-results/
+assets/*.ico
+.lingxi-sign-*/
+*.pfx
+*.p12
+*.key
