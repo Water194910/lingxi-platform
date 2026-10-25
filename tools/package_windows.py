@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -60,12 +61,23 @@ def main():
         notices = portable/'ThirdPartyLicenses'
         notices.mkdir()
         shutil.copyfile(Path(sys.base_prefix)/'LICENSE.txt', notices/'Python-LICENSE.txt')
-        for metadata in (Path(sys.prefix)/'Lib'/'site-packages').glob('*.dist-info'):
-            for path in metadata.rglob('*'):
-                if path.is_file() and any(key in path.name.lower() for key in ('license', 'copying', 'notice')):
-                    target = notices/metadata.name/path.relative_to(metadata)
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copyfile(path, target)
+        # 构建依赖可能装在隔离目录（--target / PYTHONPATH），许可同样要收集。
+        metadata_roots = [Path(sys.prefix)/'Lib'/'site-packages']
+        for entry in os.environ.get('PYTHONPATH', '').split(os.pathsep):
+            candidate = Path(entry)
+            if entry and candidate.is_dir() and candidate not in metadata_roots:
+                metadata_roots.append(candidate)
+        seen = set()
+        for metadata_root in metadata_roots:
+            for metadata in metadata_root.glob('*.dist-info'):
+                if metadata.name in seen:
+                    continue
+                seen.add(metadata.name)
+                for path in metadata.rglob('*'):
+                    if path.is_file() and any(key in path.name.lower() for key in ('license', 'copying', 'notice')):
+                        target = notices/metadata.name/path.relative_to(metadata)
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copyfile(path, target)
         source_zip = output/f'LingXi-{version}-source.zip'
         with zipfile.ZipFile(source_zip, 'w', zipfile.ZIP_DEFLATED) as archive:
             for item in manifest:

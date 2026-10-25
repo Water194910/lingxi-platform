@@ -8,7 +8,7 @@
 
 Windows 10/11 x64 用户请到 **[Releases 下载](https://github.com/Water194910/lingxi-platform/releases)**，选择 `LingXi-版本-windows-x64.zip`。解压整个包，双击 `LingXi/LingXi.exe`，无需安装 Python；保留相邻的 `_internal`，不要在 ZIP 中直接运行。
 
-当前源码版本：`0.2.0-preview.6`，公开下载版本以Releases为准。应用**未签名**，可能显示 SmartScreen“Windows已保护你的电脑”；签名申请尚未完成。下载页提供匹配源码 ZIP 和 `SHA256SUMS.txt`。若决定运行，请先核对来源及哈希，无需关闭系统防护。
+当前源码版本：`0.2.0-preview.7`，公开下载版本以Releases为准。应用**未签名**，可能显示 SmartScreen“Windows已保护你的电脑”；签名申请尚未完成。下载页提供匹配源码 ZIP 和 `SHA256SUMS.txt`。若决定运行，请先核对来源及哈希，无需关闭系统防护。
 
 ## 功能
 
