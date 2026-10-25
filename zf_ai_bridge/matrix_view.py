@@ -5,6 +5,8 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import ttk
 
+from . import theme, widgets
+
 
 def otsu_threshold(gray: bytes) -> int:
     """大津法求最佳阈值（区间中点）。"""
@@ -62,6 +64,7 @@ class MatrixView:
         height: int,
         title: str = "像素矩阵",
         cell: int = 12,
+        palette=None,
     ) -> None:
         self.gray = gray
         self.w = width
@@ -73,68 +76,80 @@ class MatrixView:
         self.threshold = otsu_threshold(gray)
         self._redraw_pending = False
         self._pil_img = None
+        self.palette = palette or theme.find_palette(parent)
+        p = self.palette
 
         self.win = tk.Toplevel(parent)
         self.win.title(f"{title}  {width}x{height}")
-        self.win.geometry("920x660")
-        self.win.minsize(520, 380)
+        self.win.geometry("1000x740")
+        self.win.minsize(560, 420)
+        self.win.configure(bg=p["bg"])
+        self.win.palette = p
 
-        # 工具栏
-        bar = ttk.Frame(self.win)
-        bar.pack(fill="x", padx=6, pady=4)
+        shell = tk.Frame(self.win, bg=p["bg"])
+        shell.pack(fill="both", expand=True, padx=18, pady=(14, 12))
 
-        ttk.Label(bar, text="放大").pack(side="left")
+        head = tk.Frame(shell, bg=p["bg"])
+        head.pack(fill="x")
+        titles = tk.Frame(head, bg=p["bg"])
+        titles.pack(side="left")
+        tk.Label(titles, text="像素矩阵", bg=p["bg"], fg=p["text"],
+                 font=(theme.FONT_UI, 18, "bold")).pack(anchor="w")
+        tk.Label(titles, text=f"{width}×{height} · 灰度数值、阈值与二值化", bg=p["bg"],
+                 fg=p["muted"], font=(theme.FONT_UI, 9)).pack(anchor="w", pady=(3, 0))
+        tools = tk.Frame(head, bg=p["bg"])
+        tools.pack(side="right", pady=(4, 0))
+        widgets.RoundedButton(tools, "关闭", self.win.destroy, p, height=32,
+                              bg=p["bg"]).pack(side="right", padx=(6, 0))
+        widgets.RoundedButton(tools, "适应", self._fit, p, height=32,
+                              bg=p["bg"]).pack(side="right", padx=(6, 0))
+
+        controls = widgets.Card(shell, p, padding=(16, 12), radius=14)
+        controls.pack(fill="x", pady=(12, 0))
+        row = tk.Frame(controls.body, bg=p["surface"])
+        row.pack(fill="x")
+        tk.Label(row, text="放大", bg=p["surface"], fg=p["muted"],
+                 font=(theme.FONT_UI, 9)).pack(side="left")
         self.zoom_var = tk.IntVar(value=cell)
-        self.zoom_label = ttk.Label(bar, text=f"{cell}px", width=6)
-        self.zoom_scale = ttk.Scale(
-            bar, from_=3, to=48, orient="horizontal",
-            command=self._on_zoom, length=120,
-        )
-        self.zoom_label.pack(side="left")
-        self.zoom_scale.pack(side="left", padx=4)
-        self.zoom_scale.set(cell)
-
+        self.zoom_scale = widgets.Slider(row, p, 3, 48, cell, self._on_zoom,
+                                         width=150, height=24)
+        self.zoom_scale.pack(side="left", padx=(8, 10))
+        self.zoom_label = tk.Label(row, text=f"{cell}px", bg=p["surface"], fg=p["text"],
+                                   font=(theme.FONT_MONO, 9), width=5)
+        self.zoom_label.pack(side="left", padx=(0, 16))
         self.num_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(
-            bar, text="数值", variable=self.num_var, command=self._redraw,
-        ).pack(side="left", padx=6)
+        widgets.CheckRow(row, p, "数值", self.num_var, self._redraw).pack(side="left", padx=(0, 10))
         self.false_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            bar, text="伪彩色", variable=self.false_var, command=self._redraw,
-        ).pack(side="left", padx=2)
+        widgets.CheckRow(row, p, "伪彩色", self.false_var, self._redraw).pack(side="left", padx=(0, 10))
         self.bin_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            bar, text="二值化", variable=self.bin_var, command=self._redraw,
-        ).pack(side="left", padx=2)
+        widgets.CheckRow(row, p, "二值化", self.bin_var, self._redraw).pack(side="left")
 
-        ttk.Button(bar, text="适应", command=self._fit).pack(side="left", padx=6)
-        ttk.Button(bar, text="关闭", command=self.win.destroy).pack(side="right", padx=4)
-
-        # 阈值栏
-        thr = ttk.Frame(self.win)
-        thr.pack(fill="x", padx=6, pady=2)
-        ttk.Label(thr, text="阈值").pack(side="left")
+        row2 = tk.Frame(controls.body, bg=p["surface"])
+        row2.pack(fill="x", pady=(10, 0))
+        tk.Label(row2, text="阈值", bg=p["surface"], fg=p["muted"],
+                 font=(theme.FONT_UI, 9)).pack(side="left")
         self.thr_var = tk.IntVar(value=self.threshold)
-        self.thr_label = ttk.Label(thr, text=str(self.threshold), width=4)
-        self.thr_scale = ttk.Scale(
-            thr, from_=0, to=255, orient="horizontal",
-            command=self._on_thr, length=220,
-            variable=self.thr_var,
-        )
+        self.thr_scale = widgets.Slider(row2, p, 0, 255, self.threshold, self._on_thr,
+                                        width=220, height=24)
+        self.thr_scale.pack(side="left", padx=(8, 10))
+        self.thr_label = tk.Label(row2, text=str(self.threshold), bg=p["surface"], fg=p["text"],
+                                  font=(theme.FONT_MONO, 9), width=4)
         self.thr_label.pack(side="left")
-        self.thr_scale.pack(side="left", padx=6)
-        self.thr_scale.set(self.threshold)
-        ttk.Button(thr, text="大津自动", command=self._otsu).pack(side="left", padx=8)
+        widgets.RoundedButton(row2, "大津自动", self._otsu, p, height=30,
+                              bg=p["surface"]).pack(side="left", padx=(10, 0))
         self.stat_var = tk.StringVar(value="")
-        ttk.Label(thr, textvariable=self.stat_var).pack(side="left", padx=12)
+        tk.Label(row2, textvariable=self.stat_var, bg=p["surface"], fg=p["muted"],
+                 font=(theme.FONT_UI, 9)).pack(side="left", padx=12)
 
         self.coord_var = tk.StringVar(value="拖拽平移 · 滚轮缩放（以鼠标为中心）")
-        ttk.Label(self.win, textvariable=self.coord_var).pack(anchor="w", padx=8)
+        tk.Label(shell, textvariable=self.coord_var, bg=p["bg"], fg=p["muted"],
+                 font=(theme.FONT_UI, 9)).pack(anchor="w", pady=(10, 0))
 
-        # 画布
-        wrap = ttk.Frame(self.win)
-        wrap.pack(fill="both", expand=True, padx=6, pady=6)
-        self.canvas = tk.Canvas(wrap, background="#1e1e1e", highlightthickness=0)
+        canvas_card = widgets.Card(shell, p, padding=(12, 12), radius=14)
+        canvas_card.pack(fill="both", expand=True, pady=(10, 0))
+        wrap = canvas_card.body
+        self.canvas = tk.Canvas(wrap, background=p["canvas"], highlightthickness=1,
+                                highlightbackground=p["border"], highlightcolor=p["accent"], bd=0)
         vsb = ttk.Scrollbar(wrap, orient="vertical", command=self.canvas.yview)
         hsb = ttk.Scrollbar(wrap, orient="horizontal", command=self.canvas.xview)
         self.canvas.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
@@ -414,6 +429,7 @@ def open_matrix_window(
     parent: tk.Misc,
     path: str | Path,
     title: str | None = None,
+    palette=None,
 ) -> MatrixView | None:
     """从 PNG/JPG/BMP 打开矩阵窗口。"""
     from .extras import load_png_rgb, rgb_to_gray
@@ -435,7 +451,7 @@ def open_matrix_window(
         except Exception:  # noqa: BLE001
             pass
         return None
-    return MatrixView(parent, gray, w, h, title=title or path.name)
+    return MatrixView(parent, gray, w, h, title=title or path.name, palette=palette)
 
 
 def open_matrix_from_gray(
@@ -444,5 +460,7 @@ def open_matrix_from_gray(
     width: int,
     height: int,
     title: str = "像素矩阵",
+    palette=None,
 ) -> MatrixView:
-    return MatrixView(parent, gray, width, height, title=title)
+    return MatrixView(parent, gray, width, height, title=title, palette=palette)
+

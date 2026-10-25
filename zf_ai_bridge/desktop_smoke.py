@@ -145,7 +145,7 @@ def run(report_path: Path) -> int:
                 pending = list(window.winfo_children())
                 while pending:
                     widget = pending.pop()
-                    if widget.winfo_class() == "TButton" and widget.cget("text") == title:
+                    if getattr(widget, "text", None) == title and hasattr(widget, "invoke"):
                         return widget
                     pending.extend(widget.winfo_children())
                 raise AssertionError(f"button missing: {title}")

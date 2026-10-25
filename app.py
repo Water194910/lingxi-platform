@@ -588,7 +588,8 @@ class BridgeApp:
             else:
                 self._log("[逆透视] 等待新图传，或先上传一张干净PNG")
                 return
-            PerspectiveWindow(self.root, rgb, w, h, camera_type, ROOT / "frames")
+            PerspectiveWindow(self.root, rgb, w, h, camera_type, ROOT / "frames",
+                              palette=getattr(self, "palette", None))
         except (OSError, ValueError) as exc:
             self._log(f"[逆透视] 无法打开: {exc}")
 
@@ -600,7 +601,8 @@ class BridgeApp:
         if not src.is_file():
             self._log("[矩阵] 暂无图像。请先「上传图片」或等待图传/「选择帧」")
             return
-        open_matrix_window(self.root, src, title=f"像素矩阵 · {src.name}")
+        open_matrix_window(self.root, src, title=f"像素矩阵 · {src.name}",
+                           palette=getattr(self, "palette", None))
         self._log(f"[矩阵] 打开 {src.name}（滚轮缩放；二值化+大津）")
 
     def _set_mode(self, mode: str, path: Path, label: str) -> None:
@@ -608,7 +610,8 @@ class BridgeApp:
         self.work_path = path
         self._refresh_preview()
         self._log(f"[模式] {label}")
-        open_matrix_window(self.root, path, title=label)
+        open_matrix_window(self.root, path, title=label,
+                           palette=getattr(self, "palette", None))
 
     def _upload_image(self) -> None:
         """上传本地照片 → 独立工作图，不被实时图传覆盖。"""

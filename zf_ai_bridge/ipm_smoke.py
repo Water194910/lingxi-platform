@@ -44,7 +44,7 @@ def exercise(root, ui, folder):
     assert window.samples[0]['rgb'] == frozen
     # Bidirectional coupling; invalid typing must disable stale exports without clamping.
     window.target.slider.set(100.5)
-    window.target._slide(None)
+    window.target._slide(window.target.slider.get())
     assert window.target.text.get() == '100.5'
     window.target.text.set('90.5')
     assert window.target.slider.get() == 90.5
