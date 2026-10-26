@@ -101,7 +101,13 @@ def exercise(root, ui, folder):
     for theme in ('dark', 'light'):
         if ui.theme != theme:
             ui.toggle_theme()
-        root.update()
+        # 主题切换有过渡帧，等颜色真正落到目标主题再校验
+        deadline = time.monotonic() + 1.2
+        while time.monotonic() < deadline:
+            root.update()
+            if window.raw.cget('background') == window.palette['canvas']:
+                break
+            time.sleep(0.02)
         assert window.raw.cget('background') == window.palette['canvas']
     # Starting a worker then closing must not dispatch Tk calls from that worker.
     window.target.text.set('130')

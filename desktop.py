@@ -94,7 +94,7 @@ class LingXiApp(bridge_ui.BridgeApp):
         # 状态立即切换（交互与断言同步），颜色先渲染半程混合色，再落到目标主题
         mixed = theme.blend_palette(self.palette, PALETTES[target], 0.55)
         self.theme = target
-        self._apply_theme(mixed)
+        self._apply_theme(mixed, glass=False)
         self._save_desktop_preferences()
         self.root.after(110, lambda: self._apply_theme())
 
@@ -118,7 +118,7 @@ class LingXiApp(bridge_ui.BridgeApp):
         for child in widget.winfo_children():
             self._recolor(child, mapping)
 
-    def _apply_theme(self, palette=None):
+    def _apply_theme(self, palette=None, *, glass=True):
         old = getattr(self, "palette", None)
         new = self.palette = palette or PALETTES[self.theme]
         theme.MOTION = self._motion_enabled
@@ -140,6 +140,27 @@ class LingXiApp(bridge_ui.BridgeApp):
                     apply(new)
                 except tk.TclError:
                     pass
+        if old is not None and glass:
+            # 组件（玻璃贴图）换皮：过渡帧跳过，避免一次切换重建两次贴图
+            for widget in self._walk(self.root):
+                apply = getattr(widget, "apply_palette", None)
+                if callable(apply):
+                    try:
+                        apply(new)
+                    except tk.TclError:
+                        pass
+        self._refresh_native(new)
+        ipm = getattr(self, "_ipm_window", None)
+        if ipm is not None and not getattr(ipm, "_closed", True):
+            try:
+                ipm.apply_palette(new)
+            except tk.TclError:
+                pass
+        if old is not None and getattr(self, "_photo", None) is None:
+            self._preview_message("等待图像\n连接设备，或导入一张图片")
+
+    def _refresh_native(self, new):
+        """只刷新原生控件与状态，不重建玻璃贴图。"""
         if getattr(self, "preview", None) is not None:
             self.preview.configure(bg=new["canvas"])
         if getattr(self, "preview_wrap", None) is not None:
@@ -154,16 +175,21 @@ class LingXiApp(bridge_ui.BridgeApp):
         if getattr(self, "theme_btn", None) is not None:
             self.theme_btn.icon = "sun" if self.theme == "dark" else "moon"
             self.theme_btn.set_text("切换浅色" if self.theme == "dark" else "切换深色")
-        for name, item in getattr(self, "nav_buttons", {}).items():
-            item.set_selected(name == self._page, animate=False)
+
+    def _apply_glass_palette(self, new):
+        for widget in self._walk(self.root):
+            apply = getattr(widget, "apply_palette", None)
+            if callable(apply):
+                try:
+                    apply(new)
+                except tk.TclError:
+                    pass
         ipm = getattr(self, "_ipm_window", None)
         if ipm and not ipm._closed:
             try:
                 ipm.apply_palette(new)
             except tk.TclError:
                 pass
-        if getattr(self, "_photo", None) is None:
-            self._preview_message("等待图像\n连接设备，或导入一张图片")
 
     def _save_desktop_preferences(self):
         self.prefs["theme"] = self.theme

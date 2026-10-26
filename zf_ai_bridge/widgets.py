@@ -238,7 +238,7 @@ class Card(tk.Frame):
     def _schedule(self, _event=None):
         if self._job is not None:
             self.after_cancel(self._job)
-        self._job = self.after(24, self._render)
+        self._job = self.after(110, self._render)
 
     def _render(self):
         self._job = None

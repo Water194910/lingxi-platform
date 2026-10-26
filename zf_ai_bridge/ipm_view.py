@@ -96,6 +96,8 @@ class AdvancedPerspectiveWindow:
         self.result = None
         self._active, self._revision, self._loading = 0, 0, True
         self._closed, self._drag = False, None
+        self._raw_zoom = 1.0
+        self._raw_pan = None
         self._future, self._pending, self._debounce = None, None, None
         self._live_key = None
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='lingxi-ipm')
@@ -268,21 +270,36 @@ class AdvancedPerspectiveWindow:
         images.pack(fill='both', expand=True)
         images.columnconfigure((0, 1), weight=1)
         images.rowconfigure(1, weight=1)
-        tk.Label(images, text='标定原图 · 选点不会污染像素', bg=p['surface'], fg=p['muted'],
-                 font=(theme.FONT_UI, 9)).grid(row=0, column=0, sticky='w')
+        raw_head = tk.Frame(images, bg=p['surface'])
+        raw_head.grid(row=0, column=0, sticky='w')
+        tk.Label(raw_head, text='标定原图 · 滚轮放大 · 右键拖动', bg=p['surface'], fg=p['muted'],
+                 font=(theme.FONT_UI, 9)).pack(side='left')
+        self.raw_zoom_var = tk.StringVar(value='适应')
+        tk.Label(raw_head, textvariable=self.raw_zoom_var, bg=p['surface'], fg=p['accent'],
+                 font=(theme.FONT_MONO, 8)).pack(side='left', padx=(8, 0))
         self.bird_title = tk.StringVar(value='鸟瞰图 · 等待标定')
         tk.Label(images, textvariable=self.bird_title, bg=p['surface'], fg=p['muted'],
                  font=(theme.FONT_UI, 9)).grid(row=0, column=1, sticky='w')
-        self.raw = tk.Canvas(images, highlightthickness=0, bd=0, bg=p['canvas'])
-        self.bird = tk.Canvas(images, highlightthickness=0, bd=0, bg=p['canvas'])
-        for col, canvas in enumerate((self.raw, self.bird)):
-            shell = tk.Frame(images, bg=p['border_soft'])
-            shell.grid(row=1, column=col, sticky='nsew', padx=(sp(0), sp(8)) if col == 0 else 0, pady=(sp(6), sp(0)))
-            canvas.configure(highlightthickness=0)
-            canvas.place(in_=shell, x=1, y=1, relwidth=1, relheight=1, width=-2, height=-2)
+        image_canvases = []
+        for col in (0, 1):
+            frame_shell = tk.Frame(images, bg=p['border_soft'])
+            frame_shell.grid(row=1, column=col, sticky='nsew',
+                             padx=(sp(0), sp(8)) if col == 0 else 0,
+                             pady=(sp(6), sp(0)))
+            canvas = tk.Canvas(frame_shell, highlightthickness=0, bd=0, bg=p['canvas'])
+            canvas.pack(fill='both', expand=True, padx=sp(1), pady=sp(1))
             canvas.bind('<Configure>', lambda _: self.draw())
+            image_canvases.append(canvas)
+        self.raw, self.bird = image_canvases
         self.raw.bind('<Button-1>', self.click)
         self.raw.bind('<B1-Motion>', self.drag)
+        self.raw.bind('<MouseWheel>', self._raw_wheel)
+        self.raw.bind('<ButtonPress-3>', self._raw_pan_start)
+        self.raw.bind('<B3-Motion>', self._raw_pan_move)
+        self.raw.bind('<ButtonRelease-3>', lambda _e: setattr(self, '_raw_pan', None))
+        self.raw.bind('<Double-Button-1>', self._raw_reset)
+        self.raw.bind('<Button-4>', lambda e: self._raw_zoom_step(1.25, e))
+        self.raw.bind('<Button-5>', lambda e: self._raw_zoom_step(0.8, e))
         self.raw.bind('<ButtonRelease-1>', lambda _: setattr(self, '_drag', None))
         self.metrics = tk.StringVar(value='请填写实测宽度、长度、近边距离，并选择四角。')
         tk.Label(right, textvariable=self.metrics, bg=p['surface'], fg=p['text_secondary'],
@@ -492,7 +509,8 @@ class AdvancedPerspectiveWindow:
 
     def _position(self, event):
         scale, ox, oy = self._raw_geometry
-        x, y = (event.x-ox)/scale-.5, (event.y-oy)/scale-.5
+        cx, cy = self.raw.canvasx(event.x), self.raw.canvasy(event.y)
+        x, y = (cx-ox)/scale-.5, (cy-oy)/scale-.5
         return (min(187., max(0., x)), min(119., max(0., y))) if -.5 <= x <= 187.5 and -.5 <= y <= 119.5 else None
 
     def _set_point(self, i, point):
@@ -536,9 +554,11 @@ class AdvancedPerspectiveWindow:
     def _paint(self, canvas, rgb, *, mask=None):
         canvas.delete('all')
         cw, ch = max(10, canvas.winfo_width()), max(10, canvas.winfo_height())
-        scale = min((cw-10)/188, (ch-10)/120)
+        fit = min((cw-10)/188, (ch-10)/120)
+        zoom = getattr(self, '_raw_zoom', 1.0) if canvas is self.raw else 1.0
+        scale = fit * zoom
         w, h = max(1, round(188*scale)), max(1, round(120*scale))
-        ox, oy = (cw-w)/2, (ch-h)/2
+        ox, oy = max(0, (cw-w)/2), max(0, (ch-h)/2)
         if rgb is not None:
             image = Image.frombytes('RGB', SIZE, rgb)
             if mask:
@@ -546,6 +566,9 @@ class AdvancedPerspectiveWindow:
                 image.paste((229, 172, 187), mask=invalid)
             canvas._photo = ImageTk.PhotoImage(image.resize((w, h), Image.Resampling.NEAREST), master=self.win)
             canvas.create_image(ox, oy, anchor='nw', image=canvas._photo)
+            if canvas is self.raw:
+                # 放大后内容超出画布，需要可滚动区域才能平移
+                canvas.configure(scrollregion=(0, 0, max(cw, ox + w + ox), max(ch, oy + h + oy)))
             if self.grid.get():
                 for x in range(0, 188, 20):
                     canvas.create_line(ox+x*scale, oy, ox+x*scale, oy+h, fill='#7793a4', dash=(2, 4))
@@ -554,6 +577,57 @@ class AdvancedPerspectiveWindow:
         else:
             canvas.create_text(cw/2, ch/2, text='等待原图' if canvas is self.raw else '等待有效标定', fill=self.palette['muted'])
         return scale, ox, oy
+
+    def _raw_zoom_step(self, factor, event=None):
+        if not self.samples[self._active]['rgb']:
+            return 'break'
+        cw, ch = max(10, self.raw.winfo_width()), max(10, self.raw.winfo_height())
+        fit = min((cw-10)/188, (ch-10)/120)
+        scale, ox, oy = self._raw_geometry
+        cx = self.raw.canvasx(event.x) if event is not None else cw / 2
+        cy = self.raw.canvasy(event.y) if event is not None else ch / 2
+        ix, iy = (cx - ox) / max(scale, 1e-6), (cy - oy) / max(scale, 1e-6)
+        zoom = max(1.0, min(8.0, self._raw_zoom * factor))
+        if abs(zoom - self._raw_zoom) < 1e-3:
+            return 'break'
+        self._raw_zoom = zoom
+        self.draw()
+        # 让鼠标下的那个图像点保持不动
+        scale2, ox2, oy2 = self._raw_geometry
+        if event is not None:
+            want_x, want_y = ox2 + ix * scale2, oy2 + iy * scale2
+            try:
+                self.raw.scan_mark(int(want_x), int(want_y))
+                self.raw.scan_dragto(event.x, event.y, gain=1)
+            except tk.TclError:
+                pass
+        self.raw_zoom_var.set('适应' if zoom <= 1.001 else f'×{zoom:.1f}')
+        return 'break'
+
+    def _raw_wheel(self, event):
+        return self._raw_zoom_step(1.25 if event.delta > 0 else 0.8, event)
+
+    def _raw_pan_start(self, event):
+        self.raw.scan_mark(event.x, event.y)
+        self._raw_pan = (event.x, event.y)
+        return 'break'
+
+    def _raw_pan_move(self, event):
+        if getattr(self, '_raw_pan', None) is None:
+            return
+        self.raw.scan_dragto(event.x, event.y, gain=1)
+        return 'break'
+
+    def _raw_reset(self, _event=None):
+        if self._raw_zoom > 1.001 or self._raw_pan is not None:
+            self._raw_zoom = 1.0
+            self._raw_pan = None
+            self.raw_zoom_var.set('适应')
+            self.draw()
+            self.raw.xview_moveto(0)
+            self.raw.yview_moveto(0)
+            return 'break'
+        return None
 
     def draw(self):
         if self._closed or not hasattr(self, 'raw'):

@@ -7,7 +7,7 @@ import sys
 import tempfile
 
 PRODUCT_NAME = "灵犀平台"
-VERSION = "0.2.0-preview.10"
+VERSION = "0.2.0-preview.11"
 
 
 def choose_writable_directory(candidates) -> Path:
