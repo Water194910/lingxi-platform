@@ -9,7 +9,7 @@ import math
 import tkinter as tk
 
 from . import theme
-from .theme import FONT_MONO, FONT_UI, RADIUS, TYPE, CACHE, mix
+from .theme import FONT_MONO, FONT_UI, RADIUS, TYPE, CACHE, mix, sp
 
 
 # ---------------------------------------------------------------- 文本度量
@@ -33,6 +33,7 @@ def measure_text(text: str, font) -> int:
 def draw_icon(canvas: tk.Canvas, name: str, x: float, y: float, size: float,
               color: str, width: float = 1.8, tags=()) -> None:
     """在 24×24 网格上绘制线条图标，原点为 (x, y) 左上角。"""
+    size = sp(size)
     s = size / 24.0
 
     def P(px, py):
@@ -149,7 +150,7 @@ def draw_icon(canvas: tk.Canvas, name: str, x: float, y: float, size: float,
     elif name == "stop":
         a, b = P(6.5, 6.5)
         c, d = P(17.5, 17.5)
-        canvas.create_rectangle(a, b, c, d, fill=color, outline="", width=0, tags=tags)
+        canvas.create_rectangle(a, b, c, d, fill=color, outline="", width=sp(0), tags=tags)
     elif name == "refresh":
         a, b = P(4.5, 4.5)
         c, d = P(19.5, 19.5)
@@ -213,9 +214,9 @@ def base_color(widget, palette) -> str:
 class Card(tk.Frame):
     """带抗锯齿圆角、细描边与柔和阴影的卡片容器。"""
 
-    def __init__(self, master, palette, *, radius=None, padding=(18, 16),
+    def __init__(self, master, palette, *, radius=None, padding=(sp(18), sp(16)),
                  fill=None, bg=None, outline=True, shadow=None, tags=()):
-        radius = RADIUS["card"] if radius is None else radius
+        radius = sp(RADIUS["card"]) if radius is None else radius
         self.palette = palette
         self.fill = fill or palette["surface"]
         self.bg = bg or palette["bg"]
@@ -289,9 +290,9 @@ def margin_of(radius: int) -> int:
 class Pill(tk.Canvas):
     """圆角状态胶囊：小圆点 + 文字，颜色随状态切换。"""
 
-    def __init__(self, master, palette, text="", tone="neutral", *, height=26, bg=None):
+    def __init__(self, master, palette, text="", tone="neutral", *, height=sp(26), bg=None):
         self.palette = palette
-        self.height = height
+        self.height = height = sp(height)
         self._text = text
         self._tone = tone
         self._image = None
@@ -354,15 +355,15 @@ class RoundedButton(tk.Canvas):
     """自绘圆角按钮：三种语气（ghost / soft / primary）+ 可选前导图标。"""
 
     def __init__(self, master, text, command, palette, *, kind="ghost",
-                 icon=None, height=34, width=None, radius=None, font=None,
-                 pad_x=15, bg=None):
+                 icon=None, height=sp(34), width=None, radius=None, font=None,
+                 pad_x=sp(15), bg=None):
         self.palette = palette
         self.kind = kind
         self.text = text
         self.command = command
         self.icon = icon
         self.height = height
-        self.radius = RADIUS["button"] if radius is None else radius
+        self.radius = sp(RADIUS["button"]) if radius is None else radius
         self.pad_x = pad_x
         self.font = font or TYPE["body"]
         if bg is None:
@@ -561,7 +562,7 @@ class RoundedButton(tk.Canvas):
 class NavItem(tk.Canvas):
     """侧栏导航项：图标 + 文本 + 左侧选中指示条（切换时收缩/展开动画）。"""
 
-    def __init__(self, master, palette, key, title, command, *, icon=None, height=42):
+    def __init__(self, master, palette, key, title, command, *, icon=None, height=sp(42)):
         self.palette = palette
         self.key = key
         self.title = title
@@ -652,7 +653,7 @@ class NavItem(tk.Canvas):
 class SegmentedControl(tk.Canvas):
     """分段选择器：选中块滑动到目标段，替代 ttk.Notebook 的方角标签。"""
 
-    def __init__(self, master, palette, options, command, *, height=32, font=None, bg=None):
+    def __init__(self, master, palette, options, command, *, height=sp(32), font=None, bg=None):
         self.palette = palette
         self.options = list(options)
         self.command = command
@@ -733,7 +734,9 @@ class SegmentedControl(tk.Canvas):
             self._offset = start + (target - start) * eased
             self._render()
 
-        self._anim.run(380, frame, easing=theme.spring, on_done=lambda: self.command(index))
+        # 内容立即切换，动画只负责滑块跟随：避免"点了没反应"的脱节感。
+        self.command(index)
+        self._anim.run(340, frame, easing=theme.spring)
 
     def apply_palette(self, palette):
         self.palette = palette
@@ -748,7 +751,7 @@ class Slider(tk.Canvas):
     """圆角轨道 + 圆形滑块；hover 放大，拖动改变数值。"""
 
     def __init__(self, master, palette, from_=0.0, to=1.0, value=0.0, command=None,
-                 *, width=170, height=24, step=None):
+                 *, width=sp(170), height=sp(24), step=None):
         self.palette = palette
         self.low, self.high = float(from_), float(to)
         self.value = float(value)
@@ -765,9 +768,9 @@ class Slider(tk.Canvas):
         self._bg = bg
         super().__init__(master, highlightthickness=0, bd=0, width=width, height=height,
                          bg=bg, cursor="hand2")
-        self._track = self.create_line(0, 0, 0, 0, width=4, capstyle="round")
-        self._fill = self.create_line(0, 0, 0, 0, width=4, capstyle="round")
-        self._knob = self.create_oval(0, 0, 0, 0, width=2)
+        self._track = self.create_line(0, 0, 0, 0, width=sp(4), capstyle="round")
+        self._fill = self.create_line(0, 0, 0, 0, width=sp(4), capstyle="round")
+        self._knob = self.create_oval(0, 0, 0, 0, width=sp(2))
         self.bind("<Configure>", lambda _e: self._render())
         self.bind("<ButtonPress-1>", self._press)
         self.bind("<B1-Motion>", self._drag)
@@ -853,7 +856,7 @@ class Slider(tk.Canvas):
 class CheckRow(tk.Canvas):
     """自绘勾选行：圆角方框 + 勾选动画，替代原生 Checkbutton 的凸起外观。"""
 
-    def __init__(self, master, palette, text, variable, command=None, *, height=28):
+    def __init__(self, master, palette, text, variable, command=None, *, height=sp(28)):
         self.palette = palette
         self.text = text
         self.variable = variable
@@ -939,12 +942,13 @@ class MetricChip(tk.Frame):
     """小指标卡：标签 + 等宽数字（带单位），数值变化时滚动插值。"""
 
     def __init__(self, master, palette, label, *, unit="", digits=0,
-                 width=118, height=58, placeholder="—"):
+                 width=sp(118), height=sp(58), placeholder="—"):
         self.palette = palette
         self.unit = unit
         self.digits = digits
         self._shown = None
         self._text = placeholder
+        width, height = sp(width), sp(height)
         super().__init__(master, width=width, height=height, bg=palette["surface"])
         self.pack_propagate(False)
         self.canvas = tk.Canvas(self, bg=palette["surface"], highlightthickness=0, bd=0)
@@ -957,8 +961,8 @@ class MetricChip(tk.Frame):
                               bg=palette["surface_alt"], fg=palette["muted"])
         self.value = tk.Label(self.body, text=self._text, font=(FONT_MONO, 13, "bold"),
                               bg=palette["surface_alt"], fg=palette["text"])
-        self.label.pack(anchor="w", padx=12, pady=(9, 0))
-        self.value.pack(anchor="w", padx=12, pady=(2, 9))
+        self.label.pack(anchor="w", padx=sp(12), pady=(sp(9), sp(0)))
+        self.value.pack(anchor="w", padx=sp(12), pady=(sp(2), sp(9)))
         self.bind("<Configure>", lambda _e: self._render())
 
     def _fmt(self, number):
@@ -1005,7 +1009,7 @@ class MetricChip(tk.Frame):
             shown = start + (target - start) * eased
             self.value.configure(text=self._fmt(shown))
 
-        anim.run(300, frame)
+        anim.run(240, frame)
 
     def apply_palette(self, palette):
         self.palette = palette

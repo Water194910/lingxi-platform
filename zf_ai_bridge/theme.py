@@ -24,6 +24,30 @@ FONT_MONO = "Cascadia Mono"
 # 全局动效开关：界面设置里可一键关闭，所有补间直接落到终态。
 MOTION = True
 
+# 界面缩放：DPI 感知后按系统缩放比例放大像素尺寸（字体走 point 单位自动跟随）。
+UI_SCALE = 1.0
+
+
+def set_scale(scale: float) -> None:
+    global UI_SCALE
+    UI_SCALE = max(0.75, min(3.0, float(scale)))
+
+
+def sp(value: float) -> int:
+    """设计像素 → 当前 DPI 下的实际像素。"""
+    return int(round(value * UI_SCALE))
+
+
+def blend_palette(first: dict, second: dict, t: float) -> dict:
+    """两套主题按比例混合，用于主题切换的过渡帧。"""
+    result = dict(second)
+    for key, value in first.items():
+        target = second.get(key)
+        if (isinstance(value, str) and isinstance(target, str)
+                and value.startswith("#") and target.startswith("#")):
+            result[key] = mix(value, target, t)
+    return result
+
 TYPE = {
     "display": (FONT_UI, 20, "bold"),
     "title": (FONT_UI, 14, "bold"),
@@ -48,14 +72,14 @@ LIGHT = dict(
     text="#11161D",
     text_secondary="#49525F",
     muted="#647084",
-    accent="#0B9E76",
-    accent_hover="#08815F",
-    accent_press="#06694D",
-    accent_soft="#E3F6F0",
+    accent="#2F6FED",
+    accent_hover="#1F5AD9",
+    accent_press="#1746B0",
+    accent_soft="#E7EEFE",
     accent_text="#FFFFFF",
     on_accent="#FFFFFF",
-    success="#0F9D58",
-    success_soft="#E4F6EC",
+    success="#22A06B",
+    success_soft="#E6F4EC",
     warn="#C2740A",
     warn_soft="#FBF1DF",
     danger="#D64545",
@@ -73,9 +97,9 @@ LIGHT = dict(
     glass_edge_alpha=0.85,
     glass_highlight=0.10,
     glass_inner_shadow=0.10,
-    aurora=((0.18, 0.06, 0.62, "#8FE3C8", 0.42),
-            (0.88, 0.12, 0.55, "#BAC6F5", 0.34),
-            (0.52, 1.02, 0.78, "#DCE8F6", 0.30)),
+    aurora=((0.16, 0.04, 0.64, "#A9C6FF", 0.40),
+            (0.90, 0.14, 0.56, "#C6BEF7", 0.34),
+            (0.50, 1.02, 0.80, "#D9E6FF", 0.30)),
 )
 
 # 深色：蓝调近黑，层次靠 surface 逐级提亮，薄荷青提亮强调
@@ -92,14 +116,14 @@ DARK = dict(
     text="#E7ECF3",
     text_secondary="#AFBACA",
     muted="#7B8798",
-    accent="#2FD6A0",
-    accent_hover="#4BE3B3",
-    accent_press="#22B98A",
-    accent_soft="#12352B",
+    accent="#5AA2FF",
+    accent_hover="#7BB6FF",
+    accent_press="#3F86E6",
+    accent_soft="#17263F",
     accent_text="#04241B",
     on_accent="#04241B",
-    success="#3BD98A",
-    success_soft="#12352A",
+    success="#4CCB8F",
+    success_soft="#12291F",
     warn="#E0A441",
     warn_soft="#33280F",
     danger="#F0715F",
@@ -117,9 +141,9 @@ DARK = dict(
     glass_edge_alpha=0.18,
     glass_highlight=0.075,
     glass_inner_shadow=0.18,
-    aurora=((0.12, 0.04, 0.66, "#0E7A5C", 0.90),
-            (0.92, 0.10, 0.58, "#1B4A80", 0.80),
-            (0.46, 1.05, 0.86, "#341C63", 0.62)),
+    aurora=((0.10, 0.02, 0.66, "#1C4A86", 0.92),
+            (0.92, 0.12, 0.58, "#2B2F79", 0.82),
+            (0.44, 1.05, 0.88, "#103A6E", 0.66)),
 )
 
 THEMES = {"light": LIGHT, "dark": DARK}

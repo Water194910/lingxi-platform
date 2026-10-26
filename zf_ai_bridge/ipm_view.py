@@ -12,6 +12,7 @@ from tkinter import filedialog, messagebox, ttk
 from PIL import Image, ImageTk
 
 from . import theme, widgets
+from .theme import sp
 from .image import write_png
 from .ipm import GroundMap, ORDER, SIZE, fit, matrix, number, transform
 
@@ -30,15 +31,15 @@ class NumberControl(tk.Frame):
         tk.Label(head, text=label, bg=p["surface"], fg=p["text_secondary"],
                  font=(theme.FONT_UI, 9)).pack(side="left")
         tk.Label(head, text=unit, bg=p["surface"], fg=p["muted"],
-                 font=(theme.FONT_UI, 8)).pack(side="left", padx=(6, 0))
+                 font=(theme.FONT_UI, 8)).pack(side="left", padx=(sp(6), sp(0)))
         row = tk.Frame(self, bg=p["surface"])
-        row.pack(fill="x", pady=(5, 0))
+        row.pack(fill="x", pady=(sp(5), sp(0)))
         self.text = tk.StringVar(value=str(value))
         start = float(value) if value not in ("", None) else float(low)
         self.slider = widgets.Slider(row, p, low, high, start, self._slide,
-                                     width=168, height=24, step=step)
-        self.slider.pack(side="left", fill="x", expand=True, padx=(0, 8))
-        self.entry = ttk.Entry(row, width=9, textvariable=self.text)
+                                     width=sp(168), height=sp(24), step=step)
+        self.slider.pack(side="left", fill="x", expand=True, padx=(sp(0), sp(8)))
+        self.entry = ttk.Entry(row, width=sp(9), textvariable=self.text)
         self.entry.pack(side="right")
         self.text.trace_add("write", self._typed)
 
@@ -100,7 +101,7 @@ class AdvancedPerspectiveWindow:
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='lingxi-ipm')
         self.win = tk.Toplevel(parent)
         self.win.title("灵犀 · 高级逆透视标定")
-        self.win.geometry('1240x820')
+        self.win.geometry(f'{sp(1240)}x{sp(820)}')
         self.win.minsize(1080, 720)
         self.win.configure(bg=self.palette['bg'])
         self.win.palette = self.palette
@@ -117,7 +118,7 @@ class AdvancedPerspectiveWindow:
         self.win.configure(bg=p['bg'])
         self.win.palette = p
         shell = tk.Frame(self.win, bg=p['bg'])
-        shell.pack(fill='both', expand=True, padx=20, pady=(16, 12))
+        shell.pack(fill='both', expand=True, padx=sp(20), pady=(sp(16), sp(12)))
 
         header = tk.Frame(shell, bg=p['bg'])
         header.pack(fill='x')
@@ -126,25 +127,25 @@ class AdvancedPerspectiveWindow:
         tk.Label(titles, text='高级逆透视', bg=p['bg'], fg=p['text'],
                  font=(theme.FONT_UI, 18, 'bold')).pack(anchor='w')
         tk.Label(titles, text='固定相机 · 实测矩形 · 多组样本拟合 · 导出 C 查表',
-                 bg=p['bg'], fg=p['muted'], font=(theme.FONT_UI, 9)).pack(anchor='w', pady=(3, 0))
+                 bg=p['bg'], fg=p['muted'], font=(theme.FONT_UI, 9)).pack(anchor='w', pady=(sp(3), sp(0)))
         actions = tk.Frame(header, bg=p['bg'])
-        actions.pack(side='right', pady=(4, 0))
+        actions.pack(side='right', pady=(sp(4), sp(0)))
         for label, command in (("重置视图参数", self.reset_view), ("导出结果…", self.export),
                                ("保存标定…", self.save), ("载入标定…", self.load)):
-            widgets.RoundedButton(actions, label, command, p, height=32,
-                                  bg=p['bg']).pack(side='right', padx=(6, 0))
+            widgets.RoundedButton(actions, label, command, p, height=sp(32),
+                                  bg=p['bg']).pack(side='right', padx=(sp(6), sp(0)))
 
         body = tk.Frame(shell, bg=p['bg'])
-        body.pack(fill='both', expand=True, pady=(14, 0))
+        body.pack(fill='both', expand=True, pady=(sp(14), sp(0)))
 
-        left_card = widgets.Card(body, p, padding=(14, 12), radius=14)
+        left_card = widgets.Card(body, p, padding=(sp(14), sp(12)), radius=sp(14))
         left_card.pack(side='left', fill='y')
-        left_card.configure(width=420)
+        left_card.configure(width=sp(420))
         left_card.pack_propagate(False)
         settings = left_card.body
         self.tabs = widgets.SegmentedControl(settings, p, ('实测与样本', '鸟瞰视图', '矩阵'),
-                                             self._select_tab, height=32, bg=p['surface'])
-        self.tabs.pack(fill='x', pady=(0, 10))
+                                             self._select_tab, height=sp(32), bg=p['surface'])
+        self.tabs.pack(fill='x', pady=(sp(0), sp(10)))
         host = tk.Frame(settings, bg=p['surface'])
         host.pack(fill='both', expand=True)
         page_frames = []
@@ -153,7 +154,7 @@ class AdvancedPerspectiveWindow:
         for title in ('实测与样本', '鸟瞰视图', '矩阵'):
             page = tk.Frame(host, bg=p['surface'])
             page_frames.append(page)
-            scroller = tk.Canvas(page, highlightthickness=0, width=340, bg=p['surface'])
+            scroller = tk.Canvas(page, highlightthickness=0, width=sp(340), bg=p['surface'])
             self.scrollers.append(scroller)
             scrollbar = ttk.Scrollbar(page, orient='vertical', command=scroller.yview)
             scroller.configure(yscrollcommand=scrollbar.set)
@@ -168,101 +169,101 @@ class AdvancedPerspectiveWindow:
         page_frames[0].pack(fill='both', expand=True)
         measure, view, advanced = panels
         tk.Label(measure, text='所有实测尺寸单位为毫米；不预填其他车辆参数。', bg=p['surface'],
-                 fg=p['muted'], font=(theme.FONT_UI, 8), wraplength=330,
+                 fg=p['muted'], font=(theme.FONT_UI, 8), wraplength=sp(330),
                  justify='left').pack(anchor='w')
         self.width = NumberControl(measure, '矩形实测宽度', 'mm', 1, 3000, '', self.changed)
-        self.width.pack(fill='x', pady=9)
+        self.width.pack(fill='x', pady=sp(9))
         self.length = NumberControl(measure, '矩形实测长度', 'mm', 1, 5000, '', self.changed)
-        self.length.pack(fill='x', pady=9)
+        self.length.pack(fill='x', pady=sp(9))
         self.estimate = tk.BooleanVar(value=False)
         ttk.Checkbutton(measure, text='不知道长度：用多组距离估算', variable=self.estimate, command=self._estimate_changed).pack(anchor='w')
         tk.Label(measure, text='多组样本：相机不动，同一个矩形沿同一中心线前后移动。\n距离取同一固定参考点到矩形近边的地面距离。', bg=p['surface'],
-                 fg=p['muted'], font=(theme.FONT_UI, 8), wraplength=330,
-                 justify='left').pack(anchor='w', pady=8)
+                 fg=p['muted'], font=(theme.FONT_UI, 8), wraplength=sp(330),
+                 justify='left').pack(anchor='w', pady=sp(8))
         self.sample_choice = ttk.Combobox(measure, state='readonly', values=('样本 1', '样本 2', '样本 3'))
         self.sample_choice.current(0)
         self.sample_choice.pack(fill='x')
         self.sample_choice.bind('<<ComboboxSelected>>', self._select_sample)
         self.enabled = tk.BooleanVar(value=True)
-        ttk.Checkbutton(measure, text='此样本参与拟合', variable=self.enabled, command=self.changed).pack(anchor='w', pady=5)
+        ttk.Checkbutton(measure, text='此样本参与拟合', variable=self.enabled, command=self.changed).pack(anchor='w', pady=sp(5))
         self.distance = NumberControl(measure, '参考点到近边距离', 'mm', 0, 6000, '', self.changed)
-        self.distance.pack(fill='x', pady=7)
+        self.distance.pack(fill='x', pady=sp(7))
         row = tk.Frame(measure, bg=p['surface'])
-        row.pack(fill='x', pady=7)
-        widgets.RoundedButton(row, '取当前帧', self.capture, p, height=32,
-                              bg=p['surface']).pack(side='left', fill='x', expand=True, padx=(0, 4))
-        widgets.RoundedButton(row, '导入原图…', self.import_image, p, height=32,
+        row.pack(fill='x', pady=sp(7))
+        widgets.RoundedButton(row, '取当前帧', self.capture, p, height=sp(32),
+                              bg=p['surface']).pack(side='left', fill='x', expand=True, padx=(sp(0), sp(4)))
+        widgets.RoundedButton(row, '导入原图…', self.import_image, p, height=sp(32),
                               bg=p['surface']).pack(side='left', fill='x', expand=True)
         row = tk.Frame(measure, bg=p['surface'])
-        row.pack(fill='x', pady=(0, 5))
+        row.pack(fill='x', pady=(sp(0), sp(5)))
         tk.Label(row, text='下一点', bg=p['surface'], fg=p['muted'],
                  font=(theme.FONT_UI, 9)).pack(side='left')
-        self.corner = ttk.Combobox(row, values=ORDER, state='readonly', width=8)
+        self.corner = ttk.Combobox(row, values=ORDER, state='readonly', width=sp(8))
         self.corner.current(0)
-        self.corner.pack(side='left', padx=6)
-        widgets.RoundedButton(row, '清除本组角点', self.clear_points, p, height=30,
+        self.corner.pack(side='left', padx=sp(6))
+        widgets.RoundedButton(row, '清除本组角点', self.clear_points, p, height=sp(30),
                               bg=p['surface']).pack(side='right')
         self.coords = []
         table = tk.Frame(measure, bg=p['surface'])
         table.pack(fill='x')
         for i, label in enumerate(ORDER):
             tk.Label(table, text=label, bg=p['surface'], fg=p['text_secondary'],
-                     font=(theme.FONT_UI, 9)).grid(row=i, column=0, padx=(0, 8), pady=2, sticky='w')
+                     font=(theme.FONT_UI, 9)).grid(row=i, column=0, padx=(sp(0), sp(8)), pady=sp(2), sticky='w')
             pair = []
             for j, high in enumerate((187, 119)):
                 var = tk.StringVar()
-                ttk.Entry(table, textvariable=var, width=8).grid(row=i, column=j+1, padx=3)
+                ttk.Entry(table, textvariable=var, width=sp(8)).grid(row=i, column=j+1, padx=sp(3))
                 var.trace_add('write', self.changed)
                 pair.append(var)
             self.coords.append(pair)
         tk.Label(measure, text='坐标为原图 x、y；点击选四角，拖动圆点微调。\n可用数值框精调到小数像素。', bg=p['surface'],
-                 fg=p['muted'], font=(theme.FONT_UI, 8), wraplength=330,
-                 justify='left').pack(anchor='w', pady=7)
+                 fg=p['muted'], font=(theme.FONT_UI, 8), wraplength=sp(330),
+                 justify='left').pack(anchor='w', pady=sp(7))
 
         tk.Label(view, text='以下参数调整鸟瞰画幅，不会改变实测数据。', bg=p['surface'],
-                 fg=p['muted'], font=(theme.FONT_UI, 8), wraplength=330,
-                 justify='left').pack(anchor='w', pady=(0, 8))
+                 fg=p['muted'], font=(theme.FONT_UI, 8), wraplength=sp(330),
+                 justify='left').pack(anchor='w', pady=(sp(0), sp(8)))
         self.target = NumberControl(view, '矩形显示宽度', 'px', 10, 180, 120, self.changed, step=.5)
         self.bottom = NumberControl(view, '底行对应距离', 'mm', 0, 3000, 400, self.changed, step=5)
         self.center = NumberControl(view, '横向中心', 'px', 0, 187, 94, self.changed, step=.5)
         for control in (self.target, self.bottom, self.center):
-            control.pack(fill='x', pady=11)
+            control.pack(fill='x', pady=sp(11))
         self.grid = tk.BooleanVar(value=True)
-        ttk.Checkbutton(view, text='显示参考网格（不写入导出图片）', variable=self.grid, command=self.draw).pack(anchor='w', pady=8)
+        ttk.Checkbutton(view, text='显示参考网格（不写入导出图片）', variable=self.grid, command=self.draw).pack(anchor='w', pady=sp(8))
         self.live = tk.BooleanVar(value=False)
         ttk.Checkbutton(view, text='用最新实时原图预览鸟瞰', variable=self.live, command=self._live_changed,
-                        state='normal' if self.frame_provider else 'disabled').pack(anchor='w', pady=5)
+                        state='normal' if self.frame_provider else 'disabled').pack(anchor='w', pady=sp(5))
         tk.Label(view, text='标定样本始终冻结；实时预览只更新右图。\n无效区域在预览中以粉色区分，导出时另附有效掩码。\n原图、算法二值图均采用最近邻，保持像素值。',
-                 bg=p['surface'], fg=p['muted'], font=(theme.FONT_UI, 8), wraplength=330,
-                 justify='left').pack(anchor='w', pady=8)
-        widgets.RoundedButton(view, '恢复显示默认值', self.reset_view, p, height=32,
-                              bg=p['surface']).pack(anchor='w', pady=8)
+                 bg=p['surface'], fg=p['muted'], font=(theme.FONT_UI, 8), wraplength=sp(330),
+                 justify='left').pack(anchor='w', pady=sp(8))
+        widgets.RoundedButton(view, '恢复显示默认值', self.reset_view, p, height=sp(32),
+                              bg=p['surface']).pack(anchor='w', pady=sp(8))
 
         self.mode = tk.StringVar(value='samples')
         ttk.Radiobutton(advanced, text='由实测样本计算（推荐）', variable=self.mode, value='samples', command=self.changed).pack(anchor='w')
-        ttk.Radiobutton(advanced, text='使用手动 H_inv 矩阵', variable=self.mode, value='matrix', command=self.changed).pack(anchor='w', pady=6)
+        ttk.Radiobutton(advanced, text='使用手动 H_inv 矩阵', variable=self.mode, value='matrix', command=self.changed).pack(anchor='w', pady=sp(6))
         tk.Label(advanced, text='H_inv：鸟瞰坐标 → 原图坐标。\n粘贴9个数字或C矩阵，支持科学计数法。\n手动矩阵的物理尺度由提供者确认；视图滑条不改写它。',
-                 bg=p['surface'], fg=p['muted'], font=(theme.FONT_UI, 8), wraplength=330,
-                 justify='left').pack(anchor='w', pady=8)
-        self.matrix_box = tk.Text(advanced, height=7, width=30, undo=True, relief='flat',
+                 bg=p['surface'], fg=p['muted'], font=(theme.FONT_UI, 8), wraplength=sp(330),
+                 justify='left').pack(anchor='w', pady=sp(8))
+        self.matrix_box = tk.Text(advanced, height=sp(7), width=sp(30), undo=True, relief='flat',
                                   borderwidth=0, highlightthickness=1,
                                   bg=p['surface_alt'], fg=p['text'],
                                   insertbackground=p['text'], font=(theme.FONT_MONO, 9))
         self.matrix_box.pack(fill='x')
         self.matrix_box.bind('<<Modified>>', self._matrix_changed)
-        widgets.RoundedButton(advanced, '复制当前 H_inv', self.copy_matrix, p, height=32,
-                              bg=p['surface']).pack(anchor='w', pady=8)
+        widgets.RoundedButton(advanced, '复制当前 H_inv', self.copy_matrix, p, height=sp(32),
+                              bg=p['surface']).pack(anchor='w', pady=sp(8))
         tk.Label(advanced, text='导出的两张C查找表合计约88.1 KiB。\n这里只导出文件，不覆盖或烧录车辆工程。\n镜头畸变需要另外标定；拟合误差不是实车精度保证。',
-                 bg=p['surface'], fg=p['muted'], font=(theme.FONT_UI, 8), wraplength=330,
-                 justify='left').pack(anchor='w', pady=8)
+                 bg=p['surface'], fg=p['muted'], font=(theme.FONT_UI, 8), wraplength=sp(330),
+                 justify='left').pack(anchor='w', pady=sp(8))
 
-        right_card = widgets.Card(body, p, padding=(14, 12), radius=14)
-        right_card.pack(side='left', fill='both', expand=True, padx=(14, 0))
+        right_card = widgets.Card(body, p, padding=(sp(14), sp(12)), radius=sp(14))
+        right_card.pack(side='left', fill='both', expand=True, padx=(sp(14), sp(0)))
         right = right_card.body
         self.sample_status = tk.StringVar(value='样本1 · 已冻结原图')
         tk.Label(right, textvariable=self.sample_status, bg=p['surface'], fg=p['text_secondary'],
-                 font=(theme.FONT_UI, 10), wraplength=650,
-                 justify='left').pack(anchor='w', pady=(0, 8))
+                 font=(theme.FONT_UI, 10), wraplength=sp(650),
+                 justify='left').pack(anchor='w', pady=(sp(0), sp(8)))
         images = tk.Frame(right, bg=p['surface'])
         images.pack(fill='both', expand=True)
         images.columnconfigure((0, 1), weight=1)
@@ -276,7 +277,7 @@ class AdvancedPerspectiveWindow:
         self.bird = tk.Canvas(images, highlightthickness=0, bd=0, bg=p['canvas'])
         for col, canvas in enumerate((self.raw, self.bird)):
             shell = tk.Frame(images, bg=p['border_soft'])
-            shell.grid(row=1, column=col, sticky='nsew', padx=(0, 8) if col == 0 else 0, pady=(6, 0))
+            shell.grid(row=1, column=col, sticky='nsew', padx=(sp(0), sp(8)) if col == 0 else 0, pady=(sp(6), sp(0)))
             canvas.configure(highlightthickness=0)
             canvas.place(in_=shell, x=1, y=1, relwidth=1, relheight=1, width=-2, height=-2)
             canvas.bind('<Configure>', lambda _: self.draw())
@@ -285,12 +286,12 @@ class AdvancedPerspectiveWindow:
         self.raw.bind('<ButtonRelease-1>', lambda _: setattr(self, '_drag', None))
         self.metrics = tk.StringVar(value='请填写实测宽度、长度、近边距离，并选择四角。')
         tk.Label(right, textvariable=self.metrics, bg=p['surface'], fg=p['text_secondary'],
-                 font=(theme.FONT_UI, 9), wraplength=650,
-                 justify='left').pack(fill='x', pady=(10, 0))
+                 font=(theme.FONT_UI, 9), wraplength=sp(650),
+                 justify='left').pack(fill='x', pady=(sp(10), sp(0)))
         self.status = tk.StringVar(value='实时接收继续运行；本窗口只使用干净原始像素。')
         tk.Label(shell, textvariable=self.status, bg=p['bg'], fg=p['muted'],
-                 font=(theme.FONT_UI, 9), wraplength=1100,
-                 justify='left').pack(fill='x', pady=(12, 0))
+                 font=(theme.FONT_UI, 9), wraplength=sp(1100),
+                 justify='left').pack(fill='x', pady=(sp(12), sp(0)))
 
         def bind_scroll(widget, canvas):
             def scroll(event):
@@ -561,7 +562,7 @@ class AdvancedPerspectiveWindow:
         scale, ox, oy = self._raw_geometry
         for i, (x, y) in self._valid_points():
             x, y = ox+(x+.5)*scale, oy+(y+.5)*scale
-            self.raw.create_oval(x-5, y-5, x+5, y+5, outline='#ef5350', width=2)
+            self.raw.create_oval(x-5, y-5, x+5, y+5, outline='#ef5350', width=sp(2))
             self.raw.create_text(x+8, y-9, text=ORDER[i], fill='#d23c3c', anchor='w')
         self._paint(self.bird, getattr(self, '_bird_rgb', None), mask=self.result.mask if self.result else None)
 

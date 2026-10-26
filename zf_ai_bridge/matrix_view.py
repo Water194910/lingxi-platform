@@ -6,6 +6,7 @@ from pathlib import Path
 from tkinter import ttk
 
 from . import theme, widgets
+from .theme import sp
 
 
 def otsu_threshold(gray: bytes) -> int:
@@ -81,13 +82,13 @@ class MatrixView:
 
         self.win = tk.Toplevel(parent)
         self.win.title(f"{title}  {width}x{height}")
-        self.win.geometry("1000x740")
+        self.win.geometry(f"{sp(1000)}x{sp(740)}")
         self.win.minsize(560, 420)
         self.win.configure(bg=p["bg"])
         self.win.palette = p
 
         shell = tk.Frame(self.win, bg=p["bg"])
-        shell.pack(fill="both", expand=True, padx=18, pady=(14, 12))
+        shell.pack(fill="both", expand=True, padx=sp(18), pady=(sp(14), sp(12)))
 
         head = tk.Frame(shell, bg=p["bg"])
         head.pack(fill="x")
@@ -96,57 +97,57 @@ class MatrixView:
         tk.Label(titles, text="像素矩阵", bg=p["bg"], fg=p["text"],
                  font=(theme.FONT_UI, 18, "bold")).pack(anchor="w")
         tk.Label(titles, text=f"{width}×{height} · 灰度数值、阈值与二值化", bg=p["bg"],
-                 fg=p["muted"], font=(theme.FONT_UI, 9)).pack(anchor="w", pady=(3, 0))
+                 fg=p["muted"], font=(theme.FONT_UI, 9)).pack(anchor="w", pady=(sp(3), sp(0)))
         tools = tk.Frame(head, bg=p["bg"])
-        tools.pack(side="right", pady=(4, 0))
-        widgets.RoundedButton(tools, "关闭", self.win.destroy, p, height=32,
-                              bg=p["bg"]).pack(side="right", padx=(6, 0))
-        widgets.RoundedButton(tools, "适应", self._fit, p, height=32,
-                              bg=p["bg"]).pack(side="right", padx=(6, 0))
+        tools.pack(side="right", pady=(sp(4), sp(0)))
+        widgets.RoundedButton(tools, "关闭", self.win.destroy, p, height=sp(32),
+                              bg=p["bg"]).pack(side="right", padx=(sp(6), sp(0)))
+        widgets.RoundedButton(tools, "适应", self._fit, p, height=sp(32),
+                              bg=p["bg"]).pack(side="right", padx=(sp(6), sp(0)))
 
-        controls = widgets.Card(shell, p, padding=(16, 12), radius=14)
-        controls.pack(fill="x", pady=(12, 0))
+        controls = widgets.Card(shell, p, padding=(sp(16), sp(12)), radius=sp(14))
+        controls.pack(fill="x", pady=(sp(12), sp(0)))
         row = tk.Frame(controls.body, bg=p["surface"])
         row.pack(fill="x")
         tk.Label(row, text="放大", bg=p["surface"], fg=p["muted"],
                  font=(theme.FONT_UI, 9)).pack(side="left")
         self.zoom_var = tk.IntVar(value=cell)
         self.zoom_scale = widgets.Slider(row, p, 3, 48, cell, self._on_zoom,
-                                         width=150, height=24)
-        self.zoom_scale.pack(side="left", padx=(8, 10))
+                                         width=sp(150), height=sp(24))
+        self.zoom_scale.pack(side="left", padx=(sp(8), sp(10)))
         self.zoom_label = tk.Label(row, text=f"{cell}px", bg=p["surface"], fg=p["text"],
-                                   font=(theme.FONT_MONO, 9), width=5)
-        self.zoom_label.pack(side="left", padx=(0, 16))
+                                   font=(theme.FONT_MONO, 9), width=sp(5))
+        self.zoom_label.pack(side="left", padx=(sp(0), sp(16)))
         self.num_var = tk.BooleanVar(value=True)
-        widgets.CheckRow(row, p, "数值", self.num_var, self._redraw).pack(side="left", padx=(0, 10))
+        widgets.CheckRow(row, p, "数值", self.num_var, self._redraw).pack(side="left", padx=(sp(0), sp(10)))
         self.false_var = tk.BooleanVar(value=False)
-        widgets.CheckRow(row, p, "伪彩色", self.false_var, self._redraw).pack(side="left", padx=(0, 10))
+        widgets.CheckRow(row, p, "伪彩色", self.false_var, self._redraw).pack(side="left", padx=(sp(0), sp(10)))
         self.bin_var = tk.BooleanVar(value=False)
         widgets.CheckRow(row, p, "二值化", self.bin_var, self._redraw).pack(side="left")
 
         row2 = tk.Frame(controls.body, bg=p["surface"])
-        row2.pack(fill="x", pady=(10, 0))
+        row2.pack(fill="x", pady=(sp(10), sp(0)))
         tk.Label(row2, text="阈值", bg=p["surface"], fg=p["muted"],
                  font=(theme.FONT_UI, 9)).pack(side="left")
         self.thr_var = tk.IntVar(value=self.threshold)
         self.thr_scale = widgets.Slider(row2, p, 0, 255, self.threshold, self._on_thr,
-                                        width=220, height=24)
-        self.thr_scale.pack(side="left", padx=(8, 10))
+                                        width=sp(220), height=sp(24))
+        self.thr_scale.pack(side="left", padx=(sp(8), sp(10)))
         self.thr_label = tk.Label(row2, text=str(self.threshold), bg=p["surface"], fg=p["text"],
-                                  font=(theme.FONT_MONO, 9), width=4)
+                                  font=(theme.FONT_MONO, 9), width=sp(4))
         self.thr_label.pack(side="left")
-        widgets.RoundedButton(row2, "大津自动", self._otsu, p, height=30,
-                              bg=p["surface"]).pack(side="left", padx=(10, 0))
+        widgets.RoundedButton(row2, "大津自动", self._otsu, p, height=sp(30),
+                              bg=p["surface"]).pack(side="left", padx=(sp(10), sp(0)))
         self.stat_var = tk.StringVar(value="")
         tk.Label(row2, textvariable=self.stat_var, bg=p["surface"], fg=p["muted"],
-                 font=(theme.FONT_UI, 9)).pack(side="left", padx=12)
+                 font=(theme.FONT_UI, 9)).pack(side="left", padx=sp(12))
 
         self.coord_var = tk.StringVar(value="拖拽平移 · 滚轮缩放（以鼠标为中心）")
         tk.Label(shell, textvariable=self.coord_var, bg=p["bg"], fg=p["muted"],
-                 font=(theme.FONT_UI, 9)).pack(anchor="w", pady=(10, 0))
+                 font=(theme.FONT_UI, 9)).pack(anchor="w", pady=(sp(10), sp(0)))
 
-        canvas_card = widgets.Card(shell, p, padding=(12, 12), radius=14)
-        canvas_card.pack(fill="both", expand=True, pady=(10, 0))
+        canvas_card = widgets.Card(shell, p, padding=(sp(12), sp(12)), radius=sp(14))
+        canvas_card.pack(fill="both", expand=True, pady=(sp(10), sp(0)))
         wrap = canvas_card.body
         self.canvas = tk.Canvas(wrap, background=p["canvas"], highlightthickness=1,
                                 highlightbackground=p["border"], highlightcolor=p["accent"], bd=0)

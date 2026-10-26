@@ -14,6 +14,7 @@ from tkinter import filedialog, messagebox, ttk
 
 import app as bridge_ui
 from zf_ai_bridge import theme, widgets
+from zf_ai_bridge.theme import sp
 from zf_ai_bridge.bridge import AiBridge, BridgeConfig
 from zf_ai_bridge.desktop_runtime import PRODUCT_NAME, VERSION, data_directory
 from zf_ai_bridge.inputs import parse_input_url
@@ -73,8 +74,8 @@ class LingXiApp(bridge_ui.BridgeApp):
                 root.iconbitmap(str(icon))
             except tk.TclError:
                 pass
-        root.geometry("1360x860")
-        root.minsize(1140, 760)
+        root.geometry(f"{sp(1360)}x{sp(860)}")
+        root.minsize(sp(1140), sp(760))
         self.input_var.set(self.input_var.get() or "tcp-listen://0.0.0.0:8081")
         # 写权限每次启动均关闭，配置文件不能自动开启设备写入。
         self.write_var.set(False)
@@ -84,9 +85,18 @@ class LingXiApp(bridge_ui.BridgeApp):
     # ------------------------------------------------------------ 主题
 
     def toggle_theme(self):
-        self.theme = "dark" if self.theme == "light" else "light"
-        self._apply_theme()
+        target = "dark" if self.theme == "light" else "light"
+        if not self._motion_enabled:
+            self.theme = target
+            self._apply_theme()
+            self._save_desktop_preferences()
+            return
+        # 状态立即切换（交互与断言同步），颜色先渲染半程混合色，再落到目标主题
+        mixed = theme.blend_palette(self.palette, PALETTES[target], 0.55)
+        self.theme = target
+        self._apply_theme(mixed)
         self._save_desktop_preferences()
+        self.root.after(110, lambda: self._apply_theme())
 
     def _walk(self, widget):
         for child in widget.winfo_children():
@@ -108,9 +118,9 @@ class LingXiApp(bridge_ui.BridgeApp):
         for child in widget.winfo_children():
             self._recolor(child, mapping)
 
-    def _apply_theme(self):
+    def _apply_theme(self, palette=None):
         old = getattr(self, "palette", None)
-        new = self.palette = PALETTES[self.theme]
+        new = self.palette = palette or PALETTES[self.theme]
         theme.MOTION = self._motion_enabled
         theme.apply_ttk(self.style, new)
         self.root.configure(bg=new["bg"])
@@ -167,7 +177,7 @@ class LingXiApp(bridge_ui.BridgeApp):
     # ------------------------------------------------------------ 构建
 
     def _button(self, parent, text, command, *, kind="ghost", icon=None,
-                height=34, bg=None, expand=False, padx=(0, 0), pady=(0, 0), fill=None):
+                height=sp(34), bg=None, expand=False, padx=(sp(0), sp(0)), pady=(sp(0), sp(0)), fill=None):
         button = widgets.RoundedButton(parent, text, command, self.palette, kind=kind,
                                        icon=icon, height=height, bg=bg)
         if expand:
@@ -185,11 +195,11 @@ class LingXiApp(bridge_ui.BridgeApp):
         self.shell.pack(fill="both", expand=True)
         self._build_sidebar(self.shell)
         workspace = tk.Frame(self.shell, bg=self.palette["bg"])
-        workspace.pack(side="left", fill="both", expand=True, padx=(28, 28), pady=(20, 14))
+        workspace.pack(side="left", fill="both", expand=True, padx=(sp(28), sp(28)), pady=(sp(20), sp(14)))
         self._build_header(workspace)
         self.status_var = tk.StringVar(value="就绪")
         self.page_host = tk.Frame(workspace, bg=self.palette["bg"])
-        self.page_host.pack(fill="both", expand=True, pady=(16, 0))
+        self.page_host.pack(fill="both", expand=True, pady=(sp(16), sp(0)))
         self.pages = {}
         for key in ("vision", "analysis", "events"):
             self.pages[key] = tk.Frame(self.page_host, bg=self.palette["bg"])
@@ -202,41 +212,41 @@ class LingXiApp(bridge_ui.BridgeApp):
 
     def _build_sidebar(self, parent):
         p = self.palette
-        bar = tk.Frame(parent, bg=p["sidebar"], width=200)
+        bar = tk.Frame(parent, bg=p["sidebar"], width=sp(200))
         bar.pack(side="left", fill="y")
         bar.pack_propagate(False)
         self.sidebar = bar
         brand = tk.Frame(bar, bg=p["sidebar"])
-        brand.pack(fill="x", padx=22, pady=(26, 20))
+        brand.pack(fill="x", padx=sp(22), pady=(sp(26), sp(20)))
         tk.Label(brand, text="灵犀", bg=p["sidebar"], fg=p["text"],
                  font=(UI, 19, "bold")).pack(anchor="w")
         tk.Label(brand, text="LINGXI PLATFORM", bg=p["sidebar"], fg=p["muted"],
-                 font=(UI, 8)).pack(anchor="w", pady=(3, 0))
+                 font=(UI, 8)).pack(anchor="w", pady=(sp(3), sp(0)))
         self.nav_buttons = {}
         for key, icon in (("vision", "vision"), ("analysis", "analysis"), ("events", "events")):
             title = PAGES[key][0]
             item = widgets.NavItem(bar, p, key, title, lambda k=key: self.show_page(k),
-                                   icon=icon, height=44)
-            item.pack(fill="x", padx=10, pady=1)
+                                   icon=icon, height=sp(44))
+            item.pack(fill="x", padx=sp(10), pady=sp(1))
             self.nav_buttons[key] = item
         self.nav_buttons["vision"].set_selected(True, animate=False)
 
-        divider = tk.Frame(bar, bg=p["border_soft"], height=1)
-        divider.pack(fill="x", padx=22, pady=(16, 14))
+        divider = tk.Frame(bar, bg=p["border_soft"], height=sp(1))
+        divider.pack(fill="x", padx=sp(22), pady=(sp(16), sp(14)))
         tk.Label(bar, text="工作区", bg=p["sidebar"], fg=p["muted"],
-                 font=(UI, 8)).pack(anchor="w", padx=24, pady=(0, 8))
+                 font=(UI, 8)).pack(anchor="w", padx=sp(24), pady=(sp(0), sp(8)))
         for text, icon, command in (("数据目录", "folder", self._open_frames),
                                     ("关于灵犀", "info", self._about)):
-            widgets.RoundedButton(bar, text, command, p, icon=icon, height=34,
-                                  bg=p["sidebar"]).pack(fill="x", padx=12, pady=2)
+            widgets.RoundedButton(bar, text, command, p, icon=icon, height=sp(34),
+                                  bg=p["sidebar"]).pack(fill="x", padx=sp(12), pady=sp(2))
 
         footer = tk.Frame(bar, bg=p["sidebar"])
-        footer.pack(side="bottom", fill="x", padx=12, pady=(0, 14))
+        footer.pack(side="bottom", fill="x", padx=sp(12), pady=(sp(0), sp(14)))
         self.theme_btn = widgets.RoundedButton(footer, "切换深色", self.toggle_theme, p,
-                                               icon="moon", height=34, bg=p["sidebar"])
+                                               icon="moon", height=sp(34), bg=p["sidebar"])
         self.theme_btn.pack(fill="x")
         tk.Label(footer, text=f"预览版 {VERSION}", bg=p["sidebar"], fg=p["muted"],
-                 font=(UI, 8)).pack(anchor="w", padx=6, pady=(10, 0))
+                 font=(UI, 8)).pack(anchor="w", padx=sp(6), pady=(sp(10), sp(0)))
 
     def _build_header(self, parent):
         p = self.palette
@@ -249,14 +259,14 @@ class LingXiApp(bridge_ui.BridgeApp):
                  font=(UI, 21, "bold")).pack(anchor="w")
         self.page_description = tk.StringVar(value=PAGES["vision"][1])
         tk.Label(left, textvariable=self.page_description, bg=p["bg"], fg=p["muted"],
-                 font=(UI, 10)).pack(anchor="w", pady=(5, 0))
+                 font=(UI, 10)).pack(anchor="w", pady=(sp(5), sp(0)))
         self.connection_pill = widgets.Pill(head, p, "未连接", "neutral", bg=p["bg"])
-        self.connection_pill.pack(side="right", pady=(8, 0))
+        self.connection_pill.pack(side="right", pady=(sp(8), sp(0)))
 
     def _build_footer(self, parent):
         p = self.palette
         foot = tk.Frame(parent, bg=p["bg"])
-        foot.pack(fill="x", pady=(14, 0))
+        foot.pack(fill="x", pady=(sp(14), sp(0)))
         foot.columnconfigure(1, weight=1)
         chips = tk.Frame(foot, bg=p["bg"])
         chips.grid(row=0, column=0, sticky="w")
@@ -264,7 +274,7 @@ class LingXiApp(bridge_ui.BridgeApp):
         self.chip_fps = widgets.MetricChip(chips, p, "接收帧率", unit=" fps", digits=1)
         self.chip_gap = widgets.MetricChip(chips, p, "最大间隔", unit=" s", digits=3)
         for chip in (self.chip_frames, self.chip_fps, self.chip_gap):
-            chip.pack(side="left", padx=(0, 10))
+            chip.pack(side="left", padx=(sp(0), sp(10)))
         tk.Label(foot, text="AI 接口  127.0.0.1:8765", bg=p["bg"], fg=p["muted"],
                  font=(MONO, 9)).grid(row=0, column=1, sticky="e")
 
@@ -274,23 +284,23 @@ class LingXiApp(bridge_ui.BridgeApp):
         page.columnconfigure(1, weight=0, minsize=280)
         page.rowconfigure(0, weight=1)
 
-        self.preview_card = widgets.Card(page, p, padding=(16, 14))
-        self.preview_card.grid(row=0, column=0, sticky="nsew", padx=(0, 16))
+        self.preview_card = widgets.Card(page, p, padding=(sp(16), sp(14)))
+        self.preview_card.grid(row=0, column=0, sticky="nsew", padx=(sp(0), sp(16)))
         body = self.preview_card.body
         top = tk.Frame(body, bg=p["surface"])
         top.pack(fill="x")
         tk.Label(top, text="摄像头", bg=p["surface"], fg=p["text"],
                  font=(UI, 11, "bold")).pack(side="left")
         self.live_btn = widgets.RoundedButton(top, "回到实时", self._back_to_live, p,
-                                              icon="live", height=30, bg=p["surface"])
+                                              icon="live", height=sp(30), bg=p["surface"])
         self.live_btn.pack(side="right")
         self.live_btn.set_enabled(False)
         self.frame_mode_var = tk.StringVar(value="等待图传")
         tk.Label(top, textvariable=self.frame_mode_var, bg=p["surface"], fg=p["muted"],
-                 font=(UI, 9)).pack(side="right", padx=(0, 12))
+                 font=(UI, 9)).pack(side="right", padx=(sp(0), sp(12)))
 
         self.preview_wrap = tk.Frame(body, bg=p["surface"])
-        self.preview_wrap.pack(fill="both", expand=True, pady=(12, 10))
+        self.preview_wrap.pack(fill="both", expand=True, pady=(sp(12), sp(10)))
         self.preview_bg = tk.Canvas(self.preview_wrap, bg=p["surface"],
                                     highlightthickness=0, bd=0)
         self.preview_bg.place(relwidth=1, relheight=1)
@@ -318,35 +328,35 @@ class LingXiApp(bridge_ui.BridgeApp):
         toolbar.pack(fill="x")
         for text, command in (("−", lambda: self._zoom_by(-1)), ("＋", lambda: self._zoom_by(1)),
                               ("适应", self._fit_view), ("1:1", lambda: self._zoom_by(0, absolute=1))):
-            widgets.RoundedButton(toolbar, text, command, p, height=30,
-                                  bg=p["surface"]).pack(side="left", padx=(0, 6))
+            widgets.RoundedButton(toolbar, text, command, p, height=sp(30),
+                                  bg=p["surface"]).pack(side="left", padx=(sp(0), sp(6)))
         widgets.RoundedButton(toolbar, "高级标定", self._open_advanced_perspective, p,
-                              kind="soft", icon="calibrate", height=30,
-                              bg=p["surface"]).pack(side="left", padx=(6, 0))
+                              kind="soft", icon="calibrate", height=sp(30),
+                              bg=p["surface"]).pack(side="left", padx=(sp(6), sp(0)))
         self.zoom_var = tk.StringVar(value="滚轮缩放 · 右键移动")
         tk.Label(toolbar, textvariable=self.zoom_var, bg=p["surface"], fg=p["muted"],
                  font=(UI, 9)).pack(side="right")
         self.probe_var = tk.StringVar(value="点击原图查看像素值")
         tk.Label(body, textvariable=self.probe_var, bg=p["surface"], fg=p["muted"],
-                 font=(UI, 9)).pack(anchor="w", pady=(8, 0))
+                 font=(UI, 9)).pack(anchor="w", pady=(sp(8), sp(0)))
 
         controls = tk.Frame(page, bg=p["bg"])
         controls.grid(row=0, column=1, sticky="nsew")
-        self.control_card = widgets.Card(controls, p, padding=(16, 14))
+        self.control_card = widgets.Card(controls, p, padding=(sp(16), sp(14)))
         self.control_card.pack(fill="x")
-        hint_card = widgets.Card(controls, p, padding=(16, 14))
-        hint_card.pack(fill="x", pady=(14, 0))
+        hint_card = widgets.Card(controls, p, padding=(sp(16), sp(14)))
+        hint_card.pack(fill="x", pady=(sp(14), sp(0)))
         hint = hint_card.body
         tk.Label(hint, text="图传速查", bg=p["surface"], fg=p["text"],
                  font=(UI, 11, "bold")).pack(anchor="w")
         tk.Label(hint, text="输入源 tcp-listen://0.0.0.0:8081\n模块主动连本机 IP；同时只开一个接收程序。",
-                 bg=p["surface"], fg=p["muted"], font=(UI, 9), wraplength=250,
-                 justify="left").pack(anchor="w", pady=(8, 0))
+                 bg=p["surface"], fg=p["muted"], font=(UI, 9), wraplength=sp(250),
+                 justify="left").pack(anchor="w", pady=(sp(8), sp(0)))
         cbody = self.control_card.body
         self.control_tabs = widgets.SegmentedControl(
-            cbody, p, ("连接", "显示", "采集"), self._on_control_segment, height=32,
+            cbody, p, ("连接", "显示", "采集"), self._on_control_segment, height=sp(32),
             bg=p["surface"])
-        self.control_tabs.pack(fill="x", pady=(0, 14))
+        self.control_tabs.pack(fill="x", pady=(sp(0), sp(14)))
         host = tk.Frame(cbody, bg=p["surface"])
         host.pack(fill="both", expand=True)
         self.control_pages = {}
@@ -378,7 +388,7 @@ class LingXiApp(bridge_ui.BridgeApp):
                     frame.after(16, tick)
                 else:
                     try:
-                        frame.pack_configure(padx=0)
+                        frame.pack_configure(padx=sp(0))
                     except tk.TclError:
                         pass
 
@@ -391,21 +401,21 @@ class LingXiApp(bridge_ui.BridgeApp):
         self.input_var = tk.StringVar(value="tcp-listen://0.0.0.0:8081")
         self.input_combo = ttk.Combobox(parent, textvariable=self.input_var, values=(
             "tcp-listen://0.0.0.0:8081", "serial://COM5:115200", "demo://"))
-        self.input_combo.pack(fill="x", pady=(6, 12))
+        self.input_combo.pack(fill="x", pady=(sp(6), sp(12)))
         self.start_btn = widgets.RoundedButton(parent, "连接设备", self.toggle_bridge, p,
-                                               kind="primary", icon="live", height=38,
+                                               kind="primary", icon="live", height=sp(38),
                                                bg=p["surface"])
-        self.start_btn.pack(fill="x", pady=(0, 14))
+        self.start_btn.pack(fill="x", pady=(sp(0), sp(14)))
         self.write_var = tk.BooleanVar(value=False)
         widgets.CheckRow(parent, p, "允许 AI 写设备", self.write_var,
                          command=self._on_write_toggle).pack(fill="x")
         self.tap_var = tk.BooleanVar(value=False)
         widgets.CheckRow(parent, p, "旁路到官方助手", self.tap_var).pack(fill="x")
         self.tap_addr_var = tk.StringVar(value="127.0.0.1:8086")
-        ttk.Entry(parent, textvariable=self.tap_addr_var).pack(fill="x", pady=(8, 0))
+        ttk.Entry(parent, textvariable=self.tap_addr_var).pack(fill="x", pady=(sp(8), sp(0)))
         tk.Label(parent, text="同一时刻只运行一个接收程序；模块主动连本机 IP:8081。",
-                 bg=p["surface"], fg=p["muted"], font=(UI, 9), wraplength=230,
-                 justify="left").pack(anchor="w", pady=(12, 0))
+                 bg=p["surface"], fg=p["muted"], font=(UI, 9), wraplength=sp(230),
+                 justify="left").pack(anchor="w", pady=(sp(12), sp(0)))
 
     def _build_display_card(self, parent):
         p = self.palette
@@ -413,18 +423,18 @@ class LingXiApp(bridge_ui.BridgeApp):
         self.center_var = tk.BooleanVar(value=False)
         self.false_var = tk.BooleanVar(value=False)
         widgets.CheckRow(parent, p, "显示边线", self.edge_var,
-                         command=self._on_overlay_toggle).pack(fill="x", pady=2)
+                         command=self._on_overlay_toggle).pack(fill="x", pady=sp(2))
         widgets.CheckRow(parent, p, "显示路径 / 中线", self.center_var,
-                         command=self._on_overlay_toggle).pack(fill="x", pady=2)
+                         command=self._on_overlay_toggle).pack(fill="x", pady=sp(2))
         widgets.CheckRow(parent, p, "伪彩色（蓝→绿→红）", self.false_var,
-                         command=self._refresh_preview).pack(fill="x", pady=2)
-        tk.Frame(parent, bg=p["border_soft"], height=1).pack(fill="x", pady=10)
+                         command=self._refresh_preview).pack(fill="x", pady=sp(2))
+        tk.Frame(parent, bg=p["border_soft"], height=sp(1)).pack(fill="x", pady=sp(10))
         self.motion_var = tk.BooleanVar(value=self._motion_enabled)
         widgets.CheckRow(parent, p, "界面动效", self.motion_var,
-                         command=self._toggle_motion).pack(fill="x", pady=2)
+                         command=self._toggle_motion).pack(fill="x", pady=sp(2))
         tk.Label(parent, text="默认显示干净原图，保存与导出不含任何标注。",
-                 bg=p["surface"], fg=p["muted"], font=(UI, 9), wraplength=230,
-                 justify="left").pack(anchor="w", pady=(12, 0))
+                 bg=p["surface"], fg=p["muted"], font=(UI, 9), wraplength=sp(230),
+                 justify="left").pack(anchor="w", pady=(sp(12), sp(0)))
 
     def _build_capture_card(self, parent):
         p = self.palette
@@ -434,17 +444,17 @@ class LingXiApp(bridge_ui.BridgeApp):
                 ("导入图片", "upload", self._upload_image, "ghost"),
                 ("历史帧", "history", self._pick_frame, "ghost")):
             widgets.RoundedButton(parent, text, command, p, kind=kind, icon=icon,
-                                  height=34, bg=p["surface"]).pack(fill="x", pady=2)
+                                  height=sp(34), bg=p["surface"]).pack(fill="x", pady=sp(2))
         self.save_image_btn = widgets.RoundedButton(parent, "保存当前原图…",
                                                     self._save_current_image, p,
-                                                    icon="save", height=34, bg=p["surface"])
-        self.save_image_btn.pack(fill="x", pady=2)
+                                                    icon="save", height=sp(34), bg=p["surface"])
+        self.save_image_btn.pack(fill="x", pady=sp(2))
         self.rec_btn = widgets.RoundedButton(parent, "开始录制", self._toggle_record, p,
-                                             icon="play", height=34, bg=p["surface"])
-        self.rec_btn.pack(fill="x", pady=2)
+                                             icon="play", height=sp(34), bg=p["surface"])
+        self.rec_btn.pack(fill="x", pady=sp(2))
         tk.Label(parent, text="录制为未压缩 AVI，帧率 15 fps；不写入实时原图。",
-                 bg=p["surface"], fg=p["muted"], font=(UI, 9), wraplength=230,
-                 justify="left").pack(anchor="w", pady=(10, 0))
+                 bg=p["surface"], fg=p["muted"], font=(UI, 9), wraplength=sp(230),
+                 justify="left").pack(anchor="w", pady=(sp(10), sp(0)))
 
     def _build_analysis_page(self, page):
         p = self.palette
@@ -457,52 +467,52 @@ class LingXiApp(bridge_ui.BridgeApp):
                  font=(UI, 11, "bold")).grid(row=0, column=0, sticky="w", columnspan=2)
         tk.Label(wrap, text="使用实时原图，或导入一张图片。所有分析入口共用当前工作图。",
                  bg=p["bg"], fg=p["muted"], font=(UI, 9)).grid(
-            row=1, column=0, sticky="w", columnspan=2, pady=(4, 14))
+            row=1, column=0, sticky="w", columnspan=2, pady=(sp(4), sp(14)))
         for index, (title, description, icon, handler) in enumerate(ANALYSIS_ENTRIES):
             row = index // 2 + 2
             column = index % 2
-            card = widgets.Card(wrap, p, padding=(18, 16))
+            card = widgets.Card(wrap, p, padding=(sp(18), sp(16)))
             card.grid(row=row, column=column, sticky="nsew",
-                      padx=(0, 12) if column == 0 else (0, 0), pady=(0, 12))
+                      padx=(sp(0), sp(12)) if column == 0 else (0, 0), pady=(sp(0), sp(12)))
             inner = card.body
             head = tk.Frame(inner, bg=p["surface"])
             head.pack(fill="x")
-            icon_canvas = tk.Canvas(head, width=20, height=20, bg=p["surface"],
+            icon_canvas = tk.Canvas(head, width=sp(20), height=sp(20), bg=p["surface"],
                                     highlightthickness=0, bd=0)
             icon_canvas.pack(side="left")
             widgets.draw_icon(icon_canvas, icon, 0, 0, 19, p["accent"], 1.8)
             tk.Label(head, text=title, bg=p["surface"], fg=p["text"],
-                     font=(UI, 11, "bold")).pack(side="left", padx=(9, 0))
+                     font=(UI, 11, "bold")).pack(side="left", padx=(sp(9), sp(0)))
             tk.Label(inner, text=description, bg=p["surface"], fg=p["muted"],
-                     font=(UI, 9), wraplength=340, justify="left").pack(
-                anchor="w", pady=(10, 14))
-            widgets.RoundedButton(inner, "打开", getattr(self, handler), p, height=32,
+                     font=(UI, 9), wraplength=sp(340), justify="left").pack(
+                anchor="w", pady=(sp(10), sp(14)))
+            widgets.RoundedButton(inner, "打开", getattr(self, handler), p, height=sp(32),
                                   bg=p["surface"]).pack(anchor="w")
 
     def _build_events_page(self, page):
         p = self.palette
-        card = widgets.Card(page, p, padding=(16, 14))
+        card = widgets.Card(page, p, padding=(sp(16), sp(14)))
         card.pack(fill="both", expand=True)
         inner = card.body
         top = tk.Frame(inner, bg=p["surface"])
-        top.pack(fill="x", pady=(0, 10))
+        top.pack(fill="x", pady=(sp(0), sp(10)))
         tk.Label(top, text="设备与事件", bg=p["surface"], fg=p["text"],
                  font=(UI, 11, "bold")).pack(side="left")
-        widgets.RoundedButton(top, "打开官方助手", self._open_zf, p, height=30,
+        widgets.RoundedButton(top, "打开官方助手", self._open_zf, p, height=sp(30),
                               bg=p["surface"]).pack(side="right")
-        widgets.RoundedButton(top, "清空", self._clear_log, p, height=30,
-                              bg=p["surface"]).pack(side="right", padx=(0, 8))
-        widgets.RoundedButton(top, "通道摘要", self._do_snapshot, p, height=30,
-                              bg=p["surface"]).pack(side="right", padx=(0, 8))
+        widgets.RoundedButton(top, "清空", self._clear_log, p, height=sp(30),
+                              bg=p["surface"]).pack(side="right", padx=(sp(0), sp(8)))
+        widgets.RoundedButton(top, "通道摘要", self._do_snapshot, p, height=sp(30),
+                              bg=p["surface"]).pack(side="right", padx=(sp(0), sp(8)))
         holder = tk.Frame(inner, bg=p["canvas"])
         holder.pack(fill="both", expand=True)
         self.data_text = tk.Text(holder, wrap="word", borderwidth=0, highlightthickness=0,
-                                 font=(MONO, 10), padx=14, pady=12, state="disabled",
+                                 font=(MONO, 10), padx=sp(14), pady=sp(12), state="disabled",
                                  bg=p["canvas"], fg=p["text"],
                                  insertbackground=p["text"], selectbackground=p["surface_hover"])
         self.data_text.pack(fill="both", expand=True)
         tk.Label(inner, textvariable=self.status_var, bg=p["surface"], fg=p["muted"],
-                 font=(UI, 9), wraplength=760, justify="left").pack(anchor="w", pady=(10, 0))
+                 font=(UI, 9), wraplength=sp(760), justify="left").pack(anchor="w", pady=(sp(10), sp(0)))
 
     # ------------------------------------------------------------ 页面切换
 
@@ -524,14 +534,14 @@ class LingXiApp(bridge_ui.BridgeApp):
 
             def tick():
                 self._page_job = None
-                progress = min(1.0, (time.monotonic() - started) / 0.44)
+                progress = min(1.0, (time.monotonic() - started) / 0.34)
                 offset = round(20 * (1 - theme.spring(progress)))
                 try:
                     page.place_configure(x=offset)
                 except tk.TclError:
                     return
                 if progress < 1:
-                    self._page_job = self.root.after(16, tick)
+                    self._page_job = self.root.after(20, tick)
                 else:
                     page.place_configure(x=0)
 
@@ -644,7 +654,7 @@ class LingXiApp(bridge_ui.BridgeApp):
                 self.connection_pill.set("接收中 · 等待数据", "accent")
         else:
             self.connection_pill.set("未连接", "neutral")
-        self.root.after(400, self._update_metrics)
+        self.root.after(600, self._update_metrics)
 
     # ------------------------------------------------------------ 桥控制
 
@@ -799,27 +809,27 @@ class LingXiApp(bridge_ui.BridgeApp):
         win.minsize(820, 540)
         win.configure(bg=p["bg"])
         shell = tk.Frame(win, bg=p["bg"])
-        shell.pack(fill="both", expand=True, padx=20, pady=18)
+        shell.pack(fill="both", expand=True, padx=sp(20), pady=sp(18))
         head = tk.Frame(shell, bg=p["bg"])
-        head.pack(fill="x", pady=(0, 14))
+        head.pack(fill="x", pady=(sp(0), sp(14)))
         tk.Label(head, text="历史帧", bg=p["bg"], fg=p["text"],
                  font=(UI, 16, "bold")).pack(side="left")
         tk.Label(head, text=f"{len(frames)} 张原图 · Ctrl / Shift 多选 · 双击锁定查看",
-                 bg=p["bg"], fg=p["muted"], font=(UI, 9)).pack(side="left", padx=(12, 0), pady=(6, 0))
+                 bg=p["bg"], fg=p["muted"], font=(UI, 9)).pack(side="left", padx=(sp(12), sp(0)), pady=(sp(6), sp(0)))
 
         body = tk.Frame(shell, bg=p["bg"])
         body.pack(fill="both", expand=True)
-        list_card = widgets.Card(body, p, padding=(12, 12))
-        list_card.pack(side="left", fill="both", expand=True, padx=(0, 14))
+        list_card = widgets.Card(body, p, padding=(sp(12), sp(12)))
+        list_card.pack(side="left", fill="both", expand=True, padx=(sp(0), sp(14)))
         listing = list_card.body
-        tree = ttk.Treeview(listing, show="tree", selectmode="extended", height=16)
-        tree.column("#0", width=300, stretch=True)
+        tree = ttk.Treeview(listing, show="tree", selectmode="extended", height=sp(16))
+        tree.column("#0", width=sp(300), stretch=True)
         scroll = ttk.Scrollbar(listing, orient="vertical", command=tree.yview)
         tree.configure(yscrollcommand=scroll.set)
         tree.pack(side="left", fill="both", expand=True)
         scroll.pack(side="right", fill="y")
 
-        preview_card = widgets.Card(body, p, padding=(14, 14), radius=14)
+        preview_card = widgets.Card(body, p, padding=(sp(14), sp(14)), radius=sp(14))
         preview_card.pack(side="right", fill="both")
         preview_holder = tk.Frame(preview_card.body, bg=p["surface_alt"])
         preview_holder.pack(fill="both", expand=True)
@@ -869,15 +879,15 @@ class LingXiApp(bridge_ui.BridgeApp):
         tree.bind("<<TreeviewSelect>>", show_preview)
         tree.bind("<Double-1>", lock)
         buttons = tk.Frame(shell, bg=p["bg"])
-        buttons.pack(fill="x", pady=(14, 0))
-        widgets.RoundedButton(buttons, "锁定查看", lock, p, kind="primary", height=34,
-                              bg=p["bg"]).pack(side="left", padx=(0, 8))
+        buttons.pack(fill="x", pady=(sp(14), sp(0)))
+        widgets.RoundedButton(buttons, "锁定查看", lock, p, kind="primary", height=sp(34),
+                              bg=p["bg"]).pack(side="left", padx=(sp(0), sp(8)))
         widgets.RoundedButton(buttons, "保存选中…", lambda: self._export_history_frames(
-            [frames[int(i)] for i in tree.selection()], parent=win), p, height=34,
-            bg=p["bg"]).pack(side="left", padx=(0, 8))
+            [frames[int(i)] for i in tree.selection()], parent=win), p, height=sp(34),
+            bg=p["bg"]).pack(side="left", padx=(sp(0), sp(8)))
         widgets.RoundedButton(buttons, "保存全部…", lambda: self._export_history_frames(
-            frames, parent=win), p, height=34, bg=p["bg"]).pack(side="left")
-        widgets.RoundedButton(buttons, "关闭", win.destroy, p, height=34,
+            frames, parent=win), p, height=sp(34), bg=p["bg"]).pack(side="left")
+        widgets.RoundedButton(buttons, "关闭", win.destroy, p, height=sp(34),
                               bg=p["bg"]).pack(side="right")
         # 持有快照和控件，方便自动化检查真实按钮流程。
         win.frame_list = tree
@@ -978,6 +988,33 @@ class LingXiApp(bridge_ui.BridgeApp):
         super()._on_close()
 
 
+def _enable_dpi_awareness():
+    """创建 Tk 之前声明 DPI 感知，避免系统把窗口位图拉伸导致模糊。
+
+    优先 Per-Monitor V2：多显示器不同缩放时，拖到高分屏也不会被系统二次拉伸。
+    Tk 8.6 不会自动重排，但"不糊"优先；窗口大小按启动屏 DPI 决定。
+    """
+    try:
+        import ctypes
+        try:
+            # -4 = DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 (Win10 1703+)
+            if ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4)):
+                return
+        except Exception:                                       # noqa: BLE001
+            pass
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)      # per-monitor
+            return
+        except Exception:                                       # noqa: BLE001
+            pass
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(1)      # system
+        except Exception:                                       # noqa: BLE001
+            ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:                                           # noqa: BLE001
+        pass
+
+
 def main():
     parser = argparse.ArgumentParser(description=PRODUCT_NAME)
     parser.add_argument("--autostart", action="store_true")
@@ -986,7 +1023,14 @@ def main():
     if args.self_test_report:
         from zf_ai_bridge.desktop_smoke import run
         return run(args.self_test_report)
+    _enable_dpi_awareness()
     root = tk.Tk()
+    try:
+        dpi = float(root.winfo_fpixels("1i"))
+        theme.set_scale(dpi / 96.0)
+        root.tk.call("tk", "scaling", dpi / 72.0)
+    except tk.TclError:
+        pass
     try:
         app = LingXiApp(root)
     except OSError as exc:
