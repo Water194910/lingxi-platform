@@ -74,7 +74,7 @@ def run(report_path: Path) -> int:
             report["checks"].append("navigation")
             # 真实事件循环验证：快速导航/主题切换只保留最后目标，按钮执行不等动画。
             def settle_motion():
-                deadline = time.monotonic()+.3
+                deadline = time.monotonic()+.9
                 while time.monotonic() < deadline:
                     root.update()
                     time.sleep(.01)

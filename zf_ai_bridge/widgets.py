@@ -168,6 +168,46 @@ def draw_icon(canvas: tk.Canvas, name: str, x: float, y: float, size: float,
         line([(6, 12.5), (10.5, 17), (18, 7.5)], 2.2)
 
 
+# ---------------------------------------------------------------- 玻璃贴图
+
+class GlassCache:
+    """玻璃面板 PhotoImage 缓存；尺寸/色调变化才重新生成。"""
+
+    def __init__(self, limit: int = 260) -> None:
+        self._images: dict[tuple, object] = {}
+        self._limit = limit
+
+    def get(self, master, width, height, radius, palette, base_hex, *,
+            tint=None, alpha=None, edge_alpha=None):
+        key = (int(width), int(height), int(radius), palette["name"], base_hex,
+               tint, alpha, edge_alpha)
+        cached = self._images.get(key)
+        if cached is not None:
+            return cached
+        if len(self._images) > self._limit:
+            self._images.clear()
+        data = theme.glass_png(width, height, radius, palette, base_hex,
+                              tint=tint, alpha=alpha, edge_alpha=edge_alpha)
+        image = tk.PhotoImage(master=master, data=data, format="png") if data else None
+        self._images[key] = image
+        return image
+
+
+GLASS = GlassCache()
+
+
+def base_color(widget, palette) -> str:
+    """采样组件所在位置的背景平均色；未映射时退回主题底色。"""
+    try:
+        root = widget.winfo_toplevel()
+        x = widget.winfo_rootx() - root.winfo_rootx()
+        y = widget.winfo_rooty() - root.winfo_rooty()
+        return theme.BACKDROP.sample(x, y, max(1, widget.winfo_width()),
+                                     max(1, widget.winfo_height()), palette["bg"])
+    except tk.TclError:
+        return palette["bg"]
+
+
 # ---------------------------------------------------------------- 圆角卡片
 
 class Card(tk.Frame):
@@ -204,12 +244,23 @@ class Card(tk.Frame):
         width, height = self.winfo_width(), self.winfo_height()
         if width < 8 or height < 8:
             return
-        image, margin = CACHE.get(
-            self, width, height, self.radius, self.fill, self.bg,
-            shadow=self.shadow, outline=self.outline,
-            gradient=mix(self.fill, self.bg, 0.30))
+        palette = self.palette
+        base = base_color(self, palette)
+        image = GLASS.get(self, width, height, self.radius, palette, base)
         if image is None:
-            return
+            # 没有 Pillow：退回实色圆角面板，界面依旧可用
+            image, margin = CACHE.get(self, width, height, self.radius, palette["surface"],
+                                      palette["bg"], shadow=palette["shadow"],
+                                      outline=palette["border"],
+                                      gradient=mix(palette["surface"], palette["bg"], 0.30))
+            self.canvas.configure(bg=palette["bg"])
+            self.body.configure(bg=palette["surface"])
+            self.fill, self.bg = palette["surface"], palette["bg"]
+        else:
+            self.canvas.configure(bg=base)
+            self.body.configure(bg=theme.glass_fill(palette, base))
+            self.fill, self.bg = theme.glass_fill(palette, base), base
+            margin = 0
         self._image = image
         if self._item is None:
             self._item = self.canvas.create_image(0, 0, anchor="nw", image=image)
@@ -258,30 +309,33 @@ class Pill(tk.Canvas):
         self.set(text, tone, animate=False)
 
     def _colors(self, tone):
+        """返回 (玻璃 tint, 玻璃 alpha, 文字/圆点色)。"""
         p = self.palette
         return {
-            "neutral": (p["surface_alt"], p["muted"]),
-            "live": (p["success_soft"], p["success"]),
-            "waiting": (p["warn_soft"], p["warn"]),
-            "error": (p["danger_soft"], p["danger"]),
-            "accent": (p["accent_soft"], p["accent"]),
-        }.get(tone, (p["surface_alt"], p["muted"]))
+            "neutral": (p["glass_tint"], p["glass_alpha"] + 0.02, p["text_secondary"]),
+            "live": (p["success"], 0.26, p["success"]),
+            "waiting": (p["warn"], 0.26, p["warn"]),
+            "error": (p["danger"], 0.26, p["danger"]),
+            "accent": (p["accent"], 0.24, p["accent"]),
+        }.get(tone, (p["glass_tint"], p["glass_alpha"] + 0.02, p["text_secondary"]))
 
     def set(self, text=None, tone=None, *, animate=True):
         if text is not None:
             self._text = text
         if tone is not None:
             self._tone = tone
-        fill, ink = self._colors(self._tone)
+        tint, alpha, ink = self._colors(self._tone)
         self.itemconfigure(self._label, text=self._text, fill=ink, font=(FONT_UI, 9))
         self.itemconfigure(self._dot, fill=ink)
         text_w = measure_text(self._text, (FONT_UI, 9)) if self._text else 0
         width = max(62, int(text_w + 46))
         height = self.height
         self._width = width
-        self.configure(width=width, bg=self.surface)
-        image, _margin = CACHE.get(self, width, height, height // 2, fill,
-                                   self.surface, shadow=(0, 0, 0, 0))
+        base = base_color(self, self.palette)
+        self.surface = base
+        self.configure(width=width, bg=base)
+        image = GLASS.get(self, width, height, height // 2, self.palette, base,
+                          tint=tint, alpha=alpha, edge_alpha=self.palette["glass_edge_alpha"])
         self._image = image
         self.itemconfigure(self._item, image=image)
         self.coords(self._item, 0, 0)
@@ -291,10 +345,6 @@ class Pill(tk.Canvas):
 
     def apply_palette(self, palette):
         self.palette = palette
-        try:
-            self.surface = self.master.cget("bg")
-        except Exception:
-            self.surface = palette["surface"]
         self.set(animate=False)
 
 
@@ -321,11 +371,13 @@ class RoundedButton(tk.Canvas):
             except Exception:
                 bg = palette["surface"]
         self.surface = bg
+        self._surface = bg
         self._enabled = True
         self._hover = False
         self._pressed = False
         self._image = None
         self._lift = 0.0
+        self._scale = 1.0
         self._anim = theme.Animator(self)
         super().__init__(master, highlightthickness=0, bd=0, height=height,
                          bg=bg, takefocus=1)
@@ -351,41 +403,46 @@ class RoundedButton(tk.Canvas):
         return max(64, int(content + self.pad_x * 2))
 
     def _tones(self):
+        """玻璃色调：(tint, alpha, edge_alpha, 文字色)。"""
         p = self.palette
         if not self._enabled:
-            return p["surface_alt"], p["muted"], None
+            return p["muted"], 0.08, 0.04, p["muted"]
         if self.kind == "primary":
-            base = p["accent"]
+            tint = p["accent"]
             if self._pressed:
-                base = p["accent_press"]
+                tint = p["accent_press"]
             elif self._hover:
-                base = p["accent_hover"]
-            return base, p["on_accent"], None
+                tint = p["accent_hover"]
+            return tint, 0.96, 0.42, p["on_accent"]
         if self.kind == "soft":
-            base = p["accent_soft"]
+            alpha = 0.16 if p["name"] == "light" else 0.24
             if self._pressed:
-                base = mix(base, p["accent"], 0.22)
+                alpha += 0.12
             elif self._hover:
-                base = mix(base, p["accent"], 0.12)
-            return base, p["accent"], None
-        base = p["surface"]
+                alpha += 0.07
+            return p["accent"], alpha, p["glass_edge_alpha"] + 0.12, p["accent"]
+        alpha = p["glass_alpha"] + (0.07 if self._hover else 0.0)
         if self._pressed:
-            base = p["surface_press"]
-        elif self._hover:
-            base = p["surface_hover"]
-        outline = p["border"] if not self._hover else mix(p["border"], p["accent"], 0.5)
-        return base, p["text"] if not self._hover else p["text"], outline
+            alpha += 0.05
+        return p["glass_tint"], min(0.96, alpha), p["glass_edge_alpha"], p["text"]
 
     def _layout(self, lift=0.0):
         actual = self.winfo_width()
         width = max(24, actual if actual > 1 else self._width)
         height = self.height
-        fill, ink, outline = self._tones()
-        image, _m = CACHE.get(self, width, height - 2, self.radius, fill,
-                              self.surface, shadow=(0, 0, 0, 0), outline=outline)
+        palette = self.palette
+        base = base_color(self, palette)
+        tint, alpha, edge_alpha, ink = self._tones()
+        scale = getattr(self, "_scale", 1.0)
+        draw_w = max(12, int(round((width - 2) * scale)))
+        draw_h = max(8, int(round((height - 3) * scale)))
+        image = GLASS.get(self, draw_w, draw_h, min(self.radius, draw_h // 2), palette, base,
+                          tint=tint, alpha=alpha, edge_alpha=edge_alpha)
         self._image = image
+        self._surface = base
+        self.configure(bg=base)
         self.itemconfigure(self._bg_item, image=image)
-        self.coords(self._bg_item, 0, 1 + lift)
+        self.coords(self._bg_item, (width - draw_w) / 2, (height - draw_h) / 2 + lift)
         self.delete("icon")
         text_w = measure_text(self.text, self.font) if self.text else 0
         icon_w = 22 if self.icon else 0
@@ -403,7 +460,7 @@ class RoundedButton(tk.Canvas):
     def _set_hover(self, value):
         self._hover = value
         self._layout(self._lift)
-        self._animate_lift(-1.0 if value else 0.0)
+        self._animate_lift(-1.5 if value else 0.0)
 
     def _animate_lift(self, target):
         start = self._lift
@@ -416,13 +473,30 @@ class RoundedButton(tk.Canvas):
             self._lift = start + (target - start) * eased
             self._layout(self._lift)
 
-        self._anim.run(130, frame)
+        self._anim.run(220, frame, easing=theme.spring)
+
+    def _animate_scale(self, target, duration, easing):
+        start = getattr(self, "_scale", 1.0)
+        if abs(start - target) < 0.004:
+            self._scale = target
+            self._layout(self._lift)
+            return
+
+        def frame(eased, _raw):
+            self._scale = start + (target - start) * eased
+            self._layout(self._lift)
+
+        self._anim.run(duration, frame, easing=easing)
 
     def _set_press(self, value):
         if not self._enabled:
             return
         self._pressed = value
         self._layout(self._lift)
+        if value:
+            self._animate_scale(0.955, 110, theme.ease_out_cubic)
+        else:
+            self._animate_scale(1.0, 340, theme.spring)
 
     def _release(self, _event):
         if not self._enabled:
@@ -430,6 +504,7 @@ class RoundedButton(tk.Canvas):
         if self._pressed:
             self._pressed = False
             self._layout(self._lift)
+            self._animate_scale(1.0, 340, theme.spring)
             if callable(self.command):
                 self.command()
 
@@ -478,11 +553,6 @@ class RoundedButton(tk.Canvas):
 
     def apply_palette(self, palette):
         self.palette = palette
-        try:
-            self.surface = self.master.cget("bg")
-        except Exception:
-            self.surface = palette["surface"]
-        self.configure(bg=self.surface)
         self._layout(self._lift)
 
 
@@ -516,16 +586,20 @@ class NavItem(tk.Canvas):
         width = self.winfo_width() if self.winfo_width() > 1 else 150
         height = self.height
         p = self.palette
-        fill = p["surface_hover"] if (self._hover and not self.selected) else (
-            p["accent_soft"] if self.selected else p["sidebar"])
+        base = base_color(self, p)
         if self.selected or self._hover:
-            image, _m = CACHE.get(self, width - 8, height - 4, 10, fill, p["sidebar"],
-                                  shadow=(0, 0, 0, 0))
+            if self.selected:
+                tint, alpha, edge = p["accent"], (0.20 if p["name"] == "light" else 0.26), 0.30
+            else:
+                tint, alpha, edge = p["glass_tint"], p["glass_alpha"] + 0.03, p["glass_edge_alpha"]
+            image = GLASS.get(self, max(20, width - 8), height - 4, 12, p, base,
+                              tint=tint, alpha=alpha, edge_alpha=edge)
             self._image = image
             self.itemconfigure(self._bg, image=image, state="normal")
             self.coords(self._bg, 4, 2)
         else:
             self.itemconfigure(self._bg, state="hidden")
+        self.configure(bg=base)
         ink = p["accent"] if self.selected else (p["text"] if self._hover else p["text_secondary"])
         self.delete("icon")
         draw_icon(self, self.icon, 16, height / 2 - 9, 18, ink, 1.75, tags=("icon",))
@@ -533,7 +607,7 @@ class NavItem(tk.Canvas):
         self.create_text(44, height / 2, text=self.title, anchor="w",
                          fill=ink, font=(FONT_UI, 10, "bold" if self.selected else "normal"),
                          tags=("label",))
-        # 选中指示条：高度按动画值收缩/展开
+        # 选中指示条：高度按弹簧动画值收缩/展开
         bar_h = (height - 16) * self._bar
         top = (height - bar_h) / 2
         self.coords(self._indicator, 0, top, 3, top + bar_h)
@@ -557,7 +631,7 @@ class NavItem(tk.Canvas):
             self._render()
 
         if animate:
-            self._anim.run(170, frame, easing=theme.ease_out_cubic)
+            self._anim.run(320, frame, easing=theme.spring)
 
     def invoke(self):
         self.command()
@@ -570,7 +644,6 @@ class NavItem(tk.Canvas):
 
     def apply_palette(self, palette):
         self.palette = palette
-        self.configure(bg=palette["sidebar"])
         self._render()
 
 
@@ -615,18 +688,22 @@ class SegmentedControl(tk.Canvas):
         p = self.palette
         width = self._width
         height = self.height
-        bg_image, _m = CACHE.get(self, width, height, height // 2, p["surface_alt"],
-                                 self.surface, shadow=(0, 0, 0, 0),
-                                 outline=p["border"])
+        base = base_color(self, p)
+        self.surface = base
+        self.configure(bg=base)
+        bg_image = GLASS.get(self, width, height, height // 2, p, base,
+                             tint=p["glass_tint"], alpha=p["glass_alpha"] + 0.03,
+                             edge_alpha=p["glass_edge_alpha"])
         self._image = bg_image
         self.itemconfigure(self._bg, image=bg_image)
         self.coords(self._bg, 0, 0)
         seg = width / max(1, len(self.options))
         thumb_w = seg - 6
         thumb_x = 3 + self._offset * seg
-        t_image, _m = CACHE.get(self, int(thumb_w), height - 6, (height - 6) // 2,
-                                p["surface"], p["surface_alt"], shadow=p["shadow"],
-                                outline=p["border_soft"])
+        t_image = GLASS.get(self, int(thumb_w), height - 6, (height - 6) // 2, p, base,
+                            tint=p["accent"] if p["name"] == "light" else "#FFFFFF",
+                            alpha=0.14 if p["name"] == "light" else 0.10,
+                            edge_alpha=p["glass_edge_alpha"] + 0.2)
         self._thumb_image = t_image
         self.itemconfigure(self._thumb, image=t_image)
         self.coords(self._thumb, thumb_x, 3)
@@ -656,15 +733,10 @@ class SegmentedControl(tk.Canvas):
             self._offset = start + (target - start) * eased
             self._render()
 
-        self._anim.run(200, frame, on_done=lambda: self.command(index))
+        self._anim.run(380, frame, easing=theme.spring, on_done=lambda: self.command(index))
 
     def apply_palette(self, palette):
         self.palette = palette
-        try:
-            self.surface = self.master.cget("bg")
-        except Exception:
-            self.surface = palette["surface"]
-        self.configure(bg=self.surface)
         for item in self._labels:
             self.itemconfigure(item, fill=palette["muted"])
         self._render()
@@ -686,8 +758,13 @@ class Slider(tk.Canvas):
         self._active = False
         self._grow = 1.0
         self._anim = theme.Animator(self)
+        try:
+            bg = master.cget("bg")
+        except Exception:
+            bg = palette["surface"]
+        self._bg = bg
         super().__init__(master, highlightthickness=0, bd=0, width=width, height=height,
-                         bg=palette["surface"], cursor="hand2")
+                         bg=bg, cursor="hand2")
         self._track = self.create_line(0, 0, 0, 0, width=4, capstyle="round")
         self._fill = self.create_line(0, 0, 0, 0, width=4, capstyle="round")
         self._knob = self.create_oval(0, 0, 0, 0, width=2)
@@ -763,7 +840,11 @@ class Slider(tk.Canvas):
 
     def apply_palette(self, palette):
         self.palette = palette
-        self.configure(bg=palette["surface"])
+        try:
+            self._bg = self.master.cget("bg")
+        except Exception:
+            self._bg = palette["surface"]
+        self.configure(bg=self._bg)
         self._render()
 
 
@@ -782,8 +863,12 @@ class CheckRow(tk.Canvas):
         self._progress = 0.0
         # Canvas 默认宽 378px，不显式测量会把同一行的勾选项挤出卡片。
         self._width_px = int(measure_text(text, (FONT_UI, 10)) + 40)
+        try:
+            bg = master.cget("bg")
+        except Exception:
+            bg = palette["surface"]
         super().__init__(master, highlightthickness=0, bd=0, height=height,
-                         width=self._width_px, bg=palette["surface"], cursor="hand2")
+                         width=self._width_px, bg=bg, cursor="hand2")
         self.bind("<Button-1>", self._toggle)
         self.bind("<Enter>", lambda _e: self._set_hover(True))
         self.bind("<Leave>", lambda _e: self._set_hover(False))
@@ -841,7 +926,10 @@ class CheckRow(tk.Canvas):
 
     def apply_palette(self, palette):
         self.palette = palette
-        self.configure(bg=palette["surface"])
+        try:
+            self.configure(bg=self.master.cget("bg"))
+        except Exception:
+            self.configure(bg=palette["surface"])
         self._render()
 
 
@@ -880,9 +968,17 @@ class MetricChip(tk.Frame):
         p = self.palette
         width = max(self.winfo_width(), 40)
         height = max(self.winfo_height(), 30)
-        image, _m = CACHE.get(self, width, height, 12, p["surface_alt"], p["surface"],
-                              shadow=(0, 0, 0, 0), outline=p["border_soft"])
+        base = base_color(self, p)
+        fill = theme.glass_fill(p, base, alpha=p["glass_alpha"] + 0.04)
+        self._fill = fill
+        image = GLASS.get(self, width, height, 12, p, base,
+                          tint=p["glass_tint"], alpha=p["glass_alpha"] + 0.04,
+                          edge_alpha=p["glass_edge_alpha"])
         self._image = image
+        self.canvas.configure(bg=base)
+        self.body.configure(bg=fill)
+        self.label.configure(bg=fill)
+        self.value.configure(bg=fill)
         self.canvas.itemconfigure(self._bg_item, image=image)
         self.canvas.coords(self._bg_item, 0, 0)
         self.canvas.coords(self.item, 0, 0)
@@ -913,8 +1009,8 @@ class MetricChip(tk.Frame):
 
     def apply_palette(self, palette):
         self.palette = palette
-        self.configure(bg=palette["surface"])
-        self.canvas.configure(bg=palette["surface"])
+        self.configure(bg=palette["bg"])
+        self.canvas.configure(bg=palette["bg"])
         self.body.configure(bg=palette["surface_alt"])
         self.label.configure(bg=palette["surface_alt"], fg=palette["muted"])
         self.value.configure(bg=palette["surface_alt"], fg=palette["text"])
@@ -935,6 +1031,8 @@ class EmptyState(tk.Canvas):
         self._phase = 0.0
         self._job = None
         self._running = False
+        self._glow = None
+        self._glow_key = None
         super().__init__(master, highlightthickness=0, bd=0, bg=palette["canvas"])
         self.bind("<Configure>", lambda _e: self._render())
 
@@ -971,6 +1069,15 @@ class EmptyState(tk.Canvas):
             return
         self.configure(bg=p["canvas"])
         cx, cy = width / 2, height / 2
+        # 玻璃后的柔光：径向光晕贴图（Pillow 可用时）
+        radius = int(min(width, height) * 1.15)
+        key = (radius, p["name"])
+        if key != self._glow_key and theme.PIL_AVAILABLE:
+            data = theme.glow_png(radius, p["accent"], 0.10 if p["name"] == "light" else 0.13)
+            self._glow = tk.PhotoImage(master=self, data=data, format="png") if data else None
+            self._glow_key = key
+        if self._glow is not None:
+            self.create_image(cx - radius / 2, cy - radius / 2 - 18, anchor="nw", image=self._glow)
         pulse = (math.sin(self._phase) + 1) / 2
         # 虚线圆角框包住图标，文案落在框外，避免压线
         half_w, half_h = 62, 44

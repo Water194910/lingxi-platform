@@ -38,11 +38,11 @@ TYPE = {
 LIGHT = dict(
     name="light",
     bg="#F2F4F7",
-    sidebar="#EBEEF3",
-    surface="#FFFFFF",
+    sidebar="#F8F9FB",
+    surface="#FAFAFC",
     surface_alt="#F6F8FA",
-    surface_hover="#EDF1F6",
-    surface_press="#E4E9F0",
+    surface_hover="#F3F6FA",
+    surface_press="#EAEFF5",
     border="#E1E6ED",
     border_soft="#EDF0F5",
     text="#11161D",
@@ -67,19 +67,28 @@ LIGHT = dict(
     shadow_strong=(17, 24, 39, 0.12),
     gradient_alpha=0.0,
     grid="#D7DEE7",
+    # 液态玻璃：浅色主题是"白色磨砂"，光晕很淡
+    glass_tint="#FFFFFF",
+    glass_alpha=0.58,
+    glass_edge_alpha=0.85,
+    glass_highlight=0.10,
+    glass_inner_shadow=0.10,
+    aurora=((0.18, 0.06, 0.62, "#8FE3C8", 0.42),
+            (0.88, 0.12, 0.55, "#BAC6F5", 0.34),
+            (0.52, 1.02, 0.78, "#DCE8F6", 0.30)),
 )
 
 # 深色：蓝调近黑，层次靠 surface 逐级提亮，薄荷青提亮强调
 DARK = dict(
     name="dark",
     bg="#0C1015",
-    sidebar="#090C11",
-    surface="#141A22",
-    surface_alt="#1A212B",
-    surface_hover="#1F2732",
-    surface_press="#26303D",
-    border="#232B37",
-    border_soft="#1C232D",
+    sidebar="#1A1F24",
+    surface="#1C2126",
+    surface_alt="#171B20",
+    surface_hover="#262B33",
+    surface_press="#2E343D",
+    border="#2A313C",
+    border_soft="#232932",
     text="#E7ECF3",
     text_secondary="#AFBACA",
     muted="#7B8798",
@@ -102,6 +111,15 @@ DARK = dict(
     shadow_strong=(0, 0, 0, 0.42),
     gradient_alpha=0.035,
     grid="#1E2632",
+    # 液态玻璃：深色主题是"暗色玻璃 + 边缘高光"，光晕更明显
+    glass_tint="#E8EEF6",
+    glass_alpha=0.075,
+    glass_edge_alpha=0.18,
+    glass_highlight=0.075,
+    glass_inner_shadow=0.18,
+    aurora=((0.12, 0.04, 0.66, "#0E7A5C", 0.90),
+            (0.92, 0.10, 0.58, "#1B4A80", 0.80),
+            (0.46, 1.05, 0.86, "#341C63", 0.62)),
 )
 
 THEMES = {"light": LIGHT, "dark": DARK}
@@ -498,4 +516,144 @@ class Animator:
                     on_done()
 
         tick()
+
+
+# ---------------------------------------------------------------- 液态玻璃
+
+try:
+    from PIL import Image, ImageChops, ImageDraw, ImageFilter
+    PIL_AVAILABLE = True
+except ImportError:            # 无 Pillow 时退回实色面板，界面依然可用
+    PIL_AVAILABLE = False
+
+
+def spring(t: float, *, damping: float = 1.05, frequency: float = 7.5) -> float:
+    """iOS 风格弹簧缓动：约 6% 过冲后收敛。t 是 0..1 的归一化进度。"""
+    if t <= 0.0:
+        return 0.0
+    if t >= 1.0:
+        return 1.0
+    seconds = t * 0.6
+    return 1.0 - math.exp(-damping * frequency * seconds) * math.cos(frequency * seconds)
+
+
+def _image_bytes(image) -> bytes:
+    import io
+    buffer = io.BytesIO()
+    image.save(buffer, "PNG")
+    return buffer.getvalue()
+
+
+class Backdrop:
+    """氛围背景：低频径向光晕。玻璃面板按位置采样它，视觉上像透出背景。"""
+
+    def __init__(self) -> None:
+        self._key = None
+        self.image = None
+        self.photo = None
+        self.width = self.height = 0
+
+    def build(self, master, palette: dict, width: int, height: int):
+        width, height = max(2, int(width)), max(2, int(height))
+        key = (palette["name"], width, height)
+        if key == self._key and self.photo is not None:
+            return self.photo
+        self._key = key
+        self.width, self.height = width, height
+        if not PIL_AVAILABLE:
+            self.image, self.photo = None, None
+            return None
+        scale = 0.28
+        sw, sh = max(96, int(width * scale)), max(64, int(height * scale))
+        base = Image.new("RGB", (sw, sh), to_rgb(palette["bg"]))
+        for rx, ry, rs, color, strength in palette["aurora"]:
+            size = max(16, int(rs * max(sw, sh)))
+            mask = Image.radial_gradient("L").resize((size, size), Image.BILINEAR)
+            mask = mask.point(lambda v: int((255 - v) * strength))
+            glow = Image.new("RGB", (size, size), to_rgb(color))
+            base.paste(glow, (int(rx * sw - size / 2), int(ry * sh - size / 2)), mask)
+        base = base.filter(ImageFilter.GaussianBlur(9)).resize((width, height), Image.BILINEAR)
+        self.image = base
+        self.photo = tk.PhotoImage(master=master, data=_image_bytes(base), format="png")
+        return self.photo
+
+    def sample(self, x: float, y: float, width: float, height: float, fallback: str) -> str:
+        """取某区域的平均背景色；无背景图时回退主题底色。"""
+        if self.image is None:
+            return fallback
+        left = max(0, min(self.width - 1, int(x)))
+        top = max(0, min(self.height - 1, int(y)))
+        right = max(left + 1, min(self.width, int(x + width)))
+        bottom = max(top + 1, min(self.height, int(y + height)))
+        crop = self.image.crop((left, top, right, bottom)).resize((1, 1), Image.BOX)
+        return to_hex(crop.getpixel((0, 0)))
+
+
+BACKDROP = Backdrop()
+
+
+def glass_png(width: int, height: int, radius: int, palette: dict, base_hex: str, *,
+              tint: str | None = None, alpha: float | None = None,
+              edge_alpha: float | None = None) -> bytes | None:
+    """玻璃面板贴图：半透明底色 + 边缘高光 + 顶部内高光 + 底部内阴影。
+
+    tint/alpha 可覆盖主题默认值，用来做"主色玻璃"（主按钮、选中态）。
+    """
+    if not PIL_AVAILABLE or width < 6 or height < 6:
+        return None
+    w, h = int(width), int(height)
+    r = int(max(2, min(radius, w / 2 - 1, h / 2 - 1)))
+    ss = 3
+    tint_rgb = to_rgb(tint) if tint else to_rgb(palette["glass_tint"])
+    strength = palette["glass_alpha"] if alpha is None else alpha
+    edge_strength = palette["glass_edge_alpha"] if edge_alpha is None else edge_alpha
+    base_rgb = to_rgb(base_hex)
+    fill = tuple(int(base_rgb[i] + (tint_rgb[i] - base_rgb[i]) * strength) for i in range(3))
+    img = Image.new("RGBA", (w * ss, h * ss), (0, 0, 0, 0))
+    ImageDraw.Draw(img).rounded_rectangle([0, 0, w * ss - 1, h * ss - 1],
+                                          radius=r * ss, fill=fill + (255,))
+    img = img.resize((w, h), Image.LANCZOS)
+    shape = img.split()[3]
+    # 顶部约 45% 的白色渐变高光，只落在圆角形状内
+    highlight = Image.new("L", (1, h))
+    for y in range(h):
+        weight = max(0.0, 1.0 - y / max(1.0, h * 0.45))
+        highlight.putpixel((0, y), int(255 * palette["glass_highlight"] * weight))
+    glow = Image.new("RGBA", (w, h), (255, 255, 255, 0))
+    glow.putalpha(ImageChops.multiply(highlight.resize((w, h), Image.BILINEAR), shape))
+    img = Image.alpha_composite(img, glow)
+    # 1px 边缘高光环
+    edge = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    ImageDraw.Draw(edge).rounded_rectangle(
+        [0, 0, w - 1, h - 1], radius=r,
+        outline=(255, 255, 255, int(255 * edge_strength)), width=1)
+    img = Image.alpha_composite(img, edge)
+    # 底部内阴影，让面板看起来有厚度
+    inner = Image.new("L", (1, h))
+    for y in range(h):
+        weight = max(0.0, (y - h * 0.72) / max(1.0, h * 0.28))
+        inner.putpixel((0, y), int(255 * palette["glass_inner_shadow"] * weight))
+    shade = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    shade.putalpha(ImageChops.multiply(inner.resize((w, h), Image.BILINEAR), shape))
+    return _image_bytes(Image.alpha_composite(img, shade))
+
+
+def glass_fill(palette: dict, base_hex: str, *, tint: str | None = None,
+               alpha: float | None = None) -> str:
+    """玻璃面板内部纯色：面板内的 Frame/Label 用它，和贴图内部完全一致。"""
+    tint_color = tint or palette["glass_tint"]
+    strength = palette["glass_alpha"] if alpha is None else alpha
+    return mix(base_hex, tint_color, strength)
+
+
+def glow_png(size: int, color: str, alpha: float = 0.30) -> bytes | None:
+    """柔和径向光晕；叠在深色底上像玻璃后面的光。"""
+    if not PIL_AVAILABLE:
+        return None
+    size = int(max(8, size))
+    mask = Image.radial_gradient("L").resize((size, size), Image.BILINEAR)
+    mask = mask.point(lambda v: int((255 - v) * alpha))
+    glow = Image.new("RGBA", (size, size), to_rgb(color) + (0,))
+    glow.putalpha(mask)
+    return _image_bytes(glow)
 

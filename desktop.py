@@ -138,7 +138,7 @@ class LingXiApp(bridge_ui.BridgeApp):
             self.preview_bg.configure(bg=new["surface"])
             self._paint_preview_round()
         if getattr(self, "data_text", None) is not None:
-            self.data_text.configure(bg=new["surface"], fg=new["text"],
+            self.data_text.configure(bg=new["canvas"], fg=new["text"],
                                      insertbackground=new["text"],
                                      selectbackground=new["surface_hover"])
         if getattr(self, "theme_btn", None) is not None:
@@ -257,15 +257,16 @@ class LingXiApp(bridge_ui.BridgeApp):
         p = self.palette
         foot = tk.Frame(parent, bg=p["bg"])
         foot.pack(fill="x", pady=(14, 0))
+        foot.columnconfigure(1, weight=1)
         chips = tk.Frame(foot, bg=p["bg"])
-        chips.pack(side="left")
+        chips.grid(row=0, column=0, sticky="w")
         self.chip_frames = widgets.MetricChip(chips, p, "总帧数", digits=0)
         self.chip_fps = widgets.MetricChip(chips, p, "接收帧率", unit=" fps", digits=1)
         self.chip_gap = widgets.MetricChip(chips, p, "最大间隔", unit=" s", digits=3)
         for chip in (self.chip_frames, self.chip_fps, self.chip_gap):
             chip.pack(side="left", padx=(0, 10))
         tk.Label(foot, text="AI 接口  127.0.0.1:8765", bg=p["bg"], fg=p["muted"],
-                 font=(MONO, 9)).pack(side="right", pady=(16, 0))
+                 font=(MONO, 9)).grid(row=0, column=1, sticky="e")
 
     def _build_vision_page(self, page):
         p = self.palette
@@ -333,16 +334,13 @@ class LingXiApp(bridge_ui.BridgeApp):
         controls.grid(row=0, column=1, sticky="nsew")
         self.control_card = widgets.Card(controls, p, padding=(16, 14))
         self.control_card.pack(fill="x")
-        self.control_card.configure(height=384)
-        self.control_card.pack_propagate(False)
         hint_card = widgets.Card(controls, p, padding=(16, 14))
         hint_card.pack(fill="x", pady=(14, 0))
         hint = hint_card.body
         tk.Label(hint, text="图传速查", bg=p["surface"], fg=p["text"],
                  font=(UI, 11, "bold")).pack(anchor="w")
-        tk.Label(hint, text="输入源填 tcp-listen://0.0.0.0:8081，模块主动连接本机 IP。\n"
-                            "同一时刻只运行一个接收程序；无帧时先核对端口、防火墙与板端发送状态。",
-                 bg=p["surface"], fg=p["muted"], font=(UI, 9), wraplength=238,
+        tk.Label(hint, text="输入源 tcp-listen://0.0.0.0:8081\n模块主动连本机 IP；同时只开一个接收程序。",
+                 bg=p["surface"], fg=p["muted"], font=(UI, 9), wraplength=250,
                  justify="left").pack(anchor="w", pady=(8, 0))
         cbody = self.control_card.body
         self.control_tabs = widgets.SegmentedControl(
@@ -453,6 +451,8 @@ class LingXiApp(bridge_ui.BridgeApp):
         wrap = tk.Frame(page, bg=p["bg"])
         wrap.pack(fill="both", expand=True)
         wrap.columnconfigure((0, 1), weight=1, uniform="analysis")
+        for row in (2, 3, 4):
+            wrap.rowconfigure(row, weight=1)
         tk.Label(wrap, text="分析当前图像", bg=p["bg"], fg=p["text"],
                  font=(UI, 11, "bold")).grid(row=0, column=0, sticky="w", columnspan=2)
         tk.Label(wrap, text="使用实时原图，或导入一张图片。所有分析入口共用当前工作图。",
@@ -494,11 +494,11 @@ class LingXiApp(bridge_ui.BridgeApp):
                               bg=p["surface"]).pack(side="right", padx=(0, 8))
         widgets.RoundedButton(top, "通道摘要", self._do_snapshot, p, height=30,
                               bg=p["surface"]).pack(side="right", padx=(0, 8))
-        holder = tk.Frame(inner, bg=p["surface_alt"])
+        holder = tk.Frame(inner, bg=p["canvas"])
         holder.pack(fill="both", expand=True)
         self.data_text = tk.Text(holder, wrap="word", borderwidth=0, highlightthickness=0,
-                                 font=(MONO, 10), padx=12, pady=10, state="disabled",
-                                 bg=p["surface_alt"], fg=p["text"],
+                                 font=(MONO, 10), padx=14, pady=12, state="disabled",
+                                 bg=p["canvas"], fg=p["text"],
                                  insertbackground=p["text"], selectbackground=p["surface_hover"])
         self.data_text.pack(fill="both", expand=True)
         tk.Label(inner, textvariable=self.status_var, bg=p["surface"], fg=p["muted"],
@@ -524,8 +524,8 @@ class LingXiApp(bridge_ui.BridgeApp):
 
             def tick():
                 self._page_job = None
-                progress = min(1.0, (time.monotonic() - started) / 0.26)
-                offset = round(18 * (1 - theme.ease_out_back(progress)))
+                progress = min(1.0, (time.monotonic() - started) / 0.44)
+                offset = round(20 * (1 - theme.spring(progress)))
                 try:
                     page.place_configure(x=offset)
                 except tk.TclError:
