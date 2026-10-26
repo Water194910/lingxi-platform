@@ -74,8 +74,8 @@ class LingXiApp(bridge_ui.BridgeApp):
                 root.iconbitmap(str(icon))
             except tk.TclError:
                 pass
-        root.geometry(f"{sp(1360)}x{sp(860)}")
-        root.minsize(sp(1140), sp(760))
+        root.geometry(f"{sp(1280)}x{sp(800)}")
+        root.minsize(sp(1040), sp(700))
         self.input_var.set(self.input_var.get() or "tcp-listen://0.0.0.0:8081")
         # 写权限每次启动均关闭，配置文件不能自动开启设备写入。
         self.write_var.set(False)
@@ -350,7 +350,7 @@ class LingXiApp(bridge_ui.BridgeApp):
         tk.Label(hint, text="图传速查", bg=p["surface"], fg=p["text"],
                  font=(UI, 11, "bold")).pack(anchor="w")
         tk.Label(hint, text="输入源 tcp-listen://0.0.0.0:8081\n模块主动连本机 IP；同时只开一个接收程序。",
-                 bg=p["surface"], fg=p["muted"], font=(UI, 9), wraplength=sp(250),
+                 bg=p["surface"], fg=p["muted"], font=(UI, 9), wraplength=sp(280),
                  justify="left").pack(anchor="w", pady=(sp(8), sp(0)))
         cbody = self.control_card.body
         self.control_tabs = widgets.SegmentedControl(

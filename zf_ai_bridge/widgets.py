@@ -341,8 +341,8 @@ class Pill(tk.Canvas):
         self.itemconfigure(self._item, image=image)
         self.coords(self._item, 0, 0)
         cy = height // 2
-        self.coords(self._dot, 13, cy - 3, 19, cy + 3)
-        self.coords(self._label, 25, cy)
+        self.coords(self._dot, sp(13), cy - sp(3), sp(18), cy + sp(3))
+        self.coords(self._label, sp(24), cy)
 
     def apply_palette(self, palette):
         self.palette = palette
@@ -446,11 +446,11 @@ class RoundedButton(tk.Canvas):
         self.coords(self._bg_item, (width - draw_w) / 2, (height - draw_h) / 2 + lift)
         self.delete("icon")
         text_w = measure_text(self.text, self.font) if self.text else 0
-        icon_w = 22 if self.icon else 0
+        icon_w = sp(22) if self.icon else 0
         start = (width - text_w - icon_w) / 2
         cy = height / 2 + lift
         if self.icon:
-            draw_icon(self, self.icon, start, cy - 9, 18, ink, 1.7, tags=("icon",))
+            draw_icon(self, self.icon, start, cy - sp(9), 18, ink, 1.7, tags=("icon",))
         self.itemconfigure(self._text_id, text=self.text, fill=ink,
                            font=self.font, anchor="w")
         self.coords(self._text_id, start + icon_w, cy)
@@ -603,9 +603,9 @@ class NavItem(tk.Canvas):
         self.configure(bg=base)
         ink = p["accent"] if self.selected else (p["text"] if self._hover else p["text_secondary"])
         self.delete("icon")
-        draw_icon(self, self.icon, 16, height / 2 - 9, 18, ink, 1.75, tags=("icon",))
+        draw_icon(self, self.icon, sp(15), height / 2 - sp(9), 18, ink, 1.75, tags=("icon",))
         self.delete("label")
-        self.create_text(44, height / 2, text=self.title, anchor="w",
+        self.create_text(sp(42), height / 2, text=self.title, anchor="w",
                          fill=ink, font=(FONT_UI, 10, "bold" if self.selected else "normal"),
                          tags=("label",))
         # 选中指示条：高度按弹簧动画值收缩/展开
@@ -903,9 +903,9 @@ class CheckRow(tk.Canvas):
         p = self.palette
         height = self.height
         self.delete("all")
-        size = 17
-        x, y = 1, (height - size) / 2
-        radius = 5
+        size = sp(17)
+        x, y = sp(1), (height - size) / 2
+        radius = sp(5)
         checked = self._progress
         # 方框：未选中描边，选中渐变为 accent 填充
         if checked > 0.02:
@@ -923,7 +923,7 @@ class CheckRow(tk.Canvas):
         if checked > 0.35:
             ink = p["on_accent"]
             draw_icon(self, "check", x + 1.5, y + 1.5, size - 3, ink, 2.0)
-        self.create_text(x + size + 10, height / 2, text=self.text, anchor="w",
+        self.create_text(x + size + sp(10), height / 2, text=self.text, anchor="w",
                          fill=p["text"] if self._hover else p["text_secondary"],
                          font=(FONT_UI, 10))
 
@@ -1081,10 +1081,10 @@ class EmptyState(tk.Canvas):
             self._glow = tk.PhotoImage(master=self, data=data, format="png") if data else None
             self._glow_key = key
         if self._glow is not None:
-            self.create_image(cx - radius / 2, cy - radius / 2 - 18, anchor="nw", image=self._glow)
+            self.create_image(cx - radius / 2, cy - radius / 2 - sp(18), anchor="nw", image=self._glow)
         pulse = (math.sin(self._phase) + 1) / 2
         # 虚线圆角框包住图标，文案落在框外，避免压线
-        half_w, half_h = 62, 44
+        half_w, half_h = sp(62), sp(44)
         x0, y0, x1, y1 = cx - half_w, cy - half_h - 26, cx + half_w, cy + half_h - 26
         dash_color = mix(p["canvas"], p["muted"], 0.34 + pulse * 0.10)
         r = 17
@@ -1097,9 +1097,9 @@ class EmptyState(tk.Canvas):
                             style="arc", outline=dash_color, width=1.4, dash=(4, 5))
         icon_color = mix(p["muted"], p["text_secondary"], 0.35 + pulse * 0.45)
         draw_icon(self, self.icon, cx - 20, cy - 26 - 20, 40, icon_color, 1.7)
-        self.create_text(cx, cy + half_h - 26 + 34, text=self.title,
+        self.create_text(cx, cy + half_h - sp(26) + sp(34), text=self.title,
                          fill=p["text_secondary"], font=(FONT_UI, 11, "bold"))
-        self.create_text(cx, cy + half_h - 26 + 58, text=self.hint,
+        self.create_text(cx, cy + half_h - sp(26) + sp(58), text=self.hint,
                          fill=p["muted"], font=(FONT_UI, 9))
 
     def set(self, title=None, hint=None):
